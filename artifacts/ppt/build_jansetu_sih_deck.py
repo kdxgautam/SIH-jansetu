@@ -12,7 +12,7 @@ from pptx.util import Inches, Pt
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "artifacts" / "ppt"
 REFERENCE = Path("/home/hexa/Downloads/Copy of SMART INDIA HACKATHON 2025_20260910_112816_0000.pptx")
-PPTX = ROOT / "submission" / "JanSetu_SIH2026_Presentation.pptx"
+PPTX = ROOT / "submission" / "BilluSena_SIH2026_Presentation.pptx"
 STACK = OUT / "assets" / "tech-stack.png"
 PROOF = OUT / "assets" / "mvp-proof.png"
 

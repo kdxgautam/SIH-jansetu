@@ -22,14 +22,14 @@ All seeded institutions, people, project records, and outcomes are demonstration
 | Field | Value |
 |---|---|
 | Team ID | `<REGISTERED_TEAM_ID>` |
-| Team Name | `<REGISTERED_TEAM_NAME>` |
+| Team Name | **BilluSena** |
 
 | Member | Role |
 |---|---|
 | `<NAME>` | `<ROLE>` |
 | `<NAME>` | `<ROLE>` |
 
-Copy the Team ID and Team Name exactly from the SIH portal before submitting.
+Copy the Team ID exactly from the SIH portal before submitting, and fill in each member's name and role.
 
 ## How JanSetu addresses the problem statement
 
