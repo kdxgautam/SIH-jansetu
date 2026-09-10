@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -10,6 +10,9 @@ Domain = Literal["education", "agriculture", "healthcare", "water", "environment
 Priority = Literal["low", "normal", "high", "critical"]
 Language = Literal["en", "hi"]
 SupportKind = Literal["mentorship", "funding", "prototyping", "pilot", "technology_transfer"]
+ChatPage = Literal["home", "explore", "challenge", "auth", "workspace", "new_challenge", "offers", "analytics", "organization", "notifications", "other"]
+CHAT_ANSWER_MAX = 1500  # An assistant reply is replayed as history, so a turn must hold a full answer.
+ChatText = Annotated[str, Field(min_length=1, max_length=CHAT_ANSWER_MAX)]
 
 
 class Input(BaseModel):
@@ -221,6 +224,28 @@ class AIOutcomeAssessment(Input):
     reason_hi: str = Field(min_length=1, max_length=2000)
     evidence_gaps: list[str] = Field(max_length=5)
     metric_observations: list[str] = Field(max_length=5)
+
+
+class ChatTurn(Input):
+    role: Literal["user", "assistant"]
+    content: ChatText
+
+
+class ChatInput(Input):
+    message: str = Field(min_length=2, max_length=500)
+    language: Language
+    page: ChatPage
+    history: list[ChatTurn] = Field(default_factory=list, max_length=6)
+
+
+class AIChatReply(Input):
+    language: Language
+    answer: str = Field(min_length=1, max_length=CHAT_ANSWER_MAX)
+    suggestions: list[Annotated[str, Field(min_length=2, max_length=180)]] = Field(default_factory=list, max_length=3)
+
+
+class ChatReply(AIChatReply):
+    source: Literal["ai", "curated"]
 
 
 class PublicChallenge(BaseModel):

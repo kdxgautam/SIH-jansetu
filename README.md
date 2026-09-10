@@ -73,6 +73,8 @@ For local Vertex AI access, place Application Default Credentials at `applicatio
 
 The Google GenAI integration uses structured, Pydantic-validated output for classification, priority reasons, English/Hindi publication drafts, duplicate suggestions, and university recommendations. It also provides optional citizen writing guidance, university project-plan drafts, industry opportunity matching, and government outcome-evidence checks. Suggestions are stored separately from approved decisions. Returned IDs must belong to the supplied candidate set. Only government reviewers can read stored challenge and outcome suggestions.
 
+The floating JanSetu Advisor answers portal and workflow questions in English or Hindi. Public visitors receive curated guidance; signed-in users receive role-aware Gemini guidance with curated fallback. It performs no portal actions, sends no database record context to Gemini, and keeps at most 12 messages in browser `sessionStorage` for the current tab.
+
 Run a live smoke check with synthetic data:
 
 ```sh

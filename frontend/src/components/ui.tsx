@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, MapPin, WarningCircle, CheckCircle, Tray, Drop, Plant, Heartbeat, BookOpen, Tree, Lightning, Buildings, Wheelchair, UsersThree, Briefcase, Recycle, type Icon } from "@phosphor-icons/react";
-import { useId, useRef, useState, type ReactNode, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { ApiError } from "@/lib/api";
 import type { Challenge } from "@/lib/types";
 import { usePortal } from "./providers";
@@ -36,5 +36,5 @@ export function ChallengeCard({ challenge: c, privateView = false }: { challenge
   const { t, lang } = usePortal();
   return <Link className={`challenge-card domain-${c.domain}`} href={privateView ? `/workspace/challenges/${c.id}` : `/challenges/${c.id}`}><div className="card-top"><span className="domain-icon"><DomainIcon domain={c.domain} /></span><Badge value={c.status} /></div><span className="domain-label">{t(c.domain)}</span><h3>{privateView && c.title ? c.title : lang === "hi" ? c.public_title_hi : c.public_title_en}</h3><p className="card-summary">{privateView && !c.summary_en ? c.description : lang === "hi" ? c.summary_hi : c.summary_en}</p><div className="card-bottom"><span><MapPin size={15} aria-hidden="true" />{t(c.district)}</span><ArrowUpRight size={20} aria-label={t("view_challenge")} /></div></Link>;
 }
-export function Progress({ status }: { status: string }) { const { t } = usePortal(); const stages = ["submitted", "validated", "assigned", "in_progress", "validation", "resolved"]; const current = stages.indexOf(status); return <ol className="progress-list" aria-label={t("progress")}>{stages.map((stage, i) => <li key={stage} className={i <= current ? "reached" : ""} aria-current={i === current ? "step" : undefined}><span className="progress-number">{i < current ? <CheckCircle size={18} weight="fill" aria-hidden="true" /> : i + 1}</span>{t(stage)}</li>)}</ol>; }
+export function Progress({ status }: { status: string }) { const { t } = usePortal(); const stages = ["submitted", "validated", "assigned", "in_progress", "validation", "resolved"]; const current = stages.indexOf(status); const previous = useRef(status); const [advanced, setAdvanced] = useState(false); useEffect(() => { if (previous.current === status) return; previous.current = status; setAdvanced(true); const timer = window.setTimeout(() => setAdvanced(false), 420); return () => window.clearTimeout(timer); }, [status]); return <ol className="progress-list" aria-label={t("progress")}>{stages.map((stage, i) => <li key={stage} className={`${i <= current ? "reached" : ""}${advanced && i === current ? " advanced" : ""}`} aria-current={i === current ? "step" : undefined}><span className="progress-number">{i < current ? <CheckCircle size={18} weight="fill" aria-hidden="true" /> : i + 1}</span>{t(stage)}</li>)}</ol>; }
 export function formObject(data: FormData) { return Object.fromEntries(data.entries()) as Record<string, string>; }

@@ -7,8 +7,10 @@ import json
 import logging
 import os
 import tempfile
+import time
 import unittest
 import uuid
+from collections import deque
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,11 +23,12 @@ from google.genai import types
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import sessionmaker
 
-from app import ai
+from app import ai, routes
 from app.auth import COOKIE, ORIGIN, digest, passwords
 from app.db import Base, DATABASE_URL, engine, get_db, now
 from app.main import app
 from app.models import Activity, AuthAttempt, Challenge, Organization, Session, User
+from app.schemas import CHAT_ANSWER_MAX
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("sih").setLevel(logging.ERROR)
@@ -39,10 +42,11 @@ class WorkflowTest(unittest.TestCase):
         engine.dispose()
 
     def setUp(self):
+        routes.CHAT_ATTEMPTS.clear()
         self.schema = "test_" + uuid.uuid4().hex
         with engine.begin() as connection:
             connection.execute(text(f'CREATE SCHEMA "{self.schema}"'))
-        self.test_engine = create_engine(DATABASE_URL, connect_args={"options": f"-csearch_path={self.schema}"})
+        self.test_engine = create_engine(DATABASE_URL).execution_options(schema_translate_map={None: self.schema})
         Base.metadata.create_all(self.test_engine)
         self.sessions = sessionmaker(self.test_engine, expire_on_commit=False)
 
@@ -219,6 +223,58 @@ class WorkflowTest(unittest.TestCase):
         for _ in range(16):
             last = self.public.post("/api/v1/auth/login", json={"email": "rate@test.local", "password": "wrong"})
         self.assertEqual(last.status_code, 429)
+
+    def test_advisor_chat_public_ai_fallback_and_limits(self):
+        request = {"message": "What information stays private?", "language": "en", "page": "home", "history": []}
+        with patch("app.routes.ai.generate", side_effect=AssertionError("public chat must not call Gemini")):
+            public = self.request(self.public, "POST", "/ai/chat", request)
+        self.assertEqual((public["source"], public["language"]), ("curated", "en"))
+        self.assertIn("exact locations", public["answer"])
+        self.request(self.public, "POST", "/ai/chat", {**request, "page": "invented"}, 422)
+        self.request(self.public, "POST", "/ai/chat", {**request, "role": "government"}, 422)
+        self.request(self.public, "POST", "/ai/chat", {**request, "history": [{"role": "user", "content": "question"}] * 7}, 422)
+
+        generated = {"language": "en", "answer": "AI drafts advice, while authorized people make every decision.", "suggestions": ["How does review work?"]}
+        private_request = {
+            "message": "How does AI help? Contact private@example.com or +919876543210.",
+            "language": "en",
+            "page": "workspace",
+            "history": [{"role": "user", "content": "The coordinates are 23.3600, 85.3300."}],
+        }
+        with patch("app.routes.ai.generate", return_value=generated) as generate:
+            response = self.request(self.citizen, "POST", "/ai/chat", private_request)
+        self.assertEqual(response["source"], "ai")
+        sent = generate.call_args.args[0]
+        self.assertEqual(set(sent), {"language", "role", "page", "message", "history", "portal_facts"})
+        self.assertEqual(sent["role"], "citizen")
+        serialized = json.dumps(sent)
+        for private in ("Citizen One", "citizen@test.local", "private@example.com", "+919876543210", "23.3600", "85.3300"):
+            self.assertNotIn(private, serialized)
+
+        with patch("app.routes.ai.generate", return_value={**generated, "language": "hi"}):
+            fallback = self.request(self.citizen, "POST", "/ai/chat", request)
+        self.assertEqual(fallback["source"], "curated")
+        with patch("app.routes.ai.generate", side_effect=RuntimeError("provider unavailable")):
+            fallback = self.request(self.citizen, "POST", "/ai/chat", {**request, "language": "hi", "message": "प्रगति कैसे देखें?"})
+        self.assertEqual((fallback["source"], fallback["language"]), ("curated", "hi"))
+
+        longest = {**generated, "answer": ("The advisor explains the portal. " * 47)[:CHAT_ANSWER_MAX]}
+        with patch("app.routes.ai.generate", return_value=longest):
+            reply = self.request(self.citizen, "POST", "/ai/chat", request)
+        self.assertEqual((reply["source"], len(reply["answer"])), ("ai", CHAT_ANSWER_MAX))
+        replayed = {**request, "history": [{"role": "assistant", "content": reply["answer"]}]}
+        with patch("app.routes.ai.generate", return_value=generated) as generate:
+            self.request(self.citizen, "POST", "/ai/chat", replayed)
+        self.assertEqual(generate.call_args.args[0]["history"][0]["content"], reply["answer"])
+
+        routes.CHAT_ATTEMPTS.clear()
+        routes.CHAT_ATTEMPTS["stale-user"] = deque([time.monotonic() - 3600])
+        with patch("app.routes.ai.generate", return_value=generated):
+            for _ in range(12):
+                self.request(self.citizen, "POST", "/ai/chat", request)
+            self.request(self.citizen, "POST", "/ai/chat", request, 429)
+        self.assertNotIn("stale-user", routes.CHAT_ATTEMPTS)  # An idle user is evicted, not kept forever.
+        self.assertEqual(len(routes.CHAT_ATTEMPTS), 1)
 
     def test_ai_failures_and_review_branches(self):
         cid = self.create()
