@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 
 from google import genai
+from google.auth import default as load_default_credentials
 from google.auth import load_credentials_from_file
 from google.genai import types
 from pydantic import BaseModel
@@ -51,6 +52,22 @@ def _client():
             ), "vertex"
         except Exception as exc:
             log.warning("ai_credentials_failed provider=vertex exception=%s", type(exc).__name__)
+    try:
+        credentials, detected_project = load_default_credentials(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        project = os.getenv("GOOGLE_CLOUD_PROJECT") or detected_project or getattr(credentials, "quota_project_id", None)
+        if not project:
+            raise RuntimeError("adc_project_missing")
+        return genai.Client(
+            vertexai=True,
+            credentials=credentials,
+            project=project,
+            location=os.getenv("GOOGLE_CLOUD_LOCATION", "global"),
+            http_options=types.HttpOptions(timeout=30000, retry_options=RETRIES),
+        ), "vertex"
+    except Exception as exc:
+        log.warning("ai_ambient_credentials_failed provider=vertex exception=%s", type(exc).__name__)
     key = os.getenv("GEMINI_API_KEY")
     if key:
         return genai.Client(api_key=key, http_options=types.HttpOptions(timeout=30000, retry_options=RETRIES)), "gemini_api"

@@ -307,6 +307,13 @@ class AIRequestTest(unittest.TestCase):
         with patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "/missing/credentials.json", "GEMINI_API_KEY": "fallback"}, clear=True), patch("app.ai.genai.Client", return_value="key-client") as constructor:
             self.assertEqual(ai._client(), ("key-client", "gemini_api"))
             self.assertEqual(constructor.call_args.kwargs["api_key"], "fallback")
+        with patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "/missing/credentials.json"}, clear=True), patch("app.ai.load_default_credentials", return_value=(SimpleNamespace(), "ambient-project")), patch("app.ai.genai.Client", return_value="ambient-client") as constructor:
+            self.assertEqual(ai._client(), ("ambient-client", "vertex"))
+            self.assertTrue(constructor.call_args.kwargs["vertexai"])
+            self.assertEqual(constructor.call_args.kwargs["project"], "ambient-project")
+        with patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "/missing/credentials.json", "GEMINI_API_KEY": "fallback"}, clear=True), patch("app.ai.load_default_credentials", side_effect=RuntimeError("missing")), patch("app.ai.genai.Client", return_value="key-client") as constructor:
+            self.assertEqual(ai._client(), ("key-client", "gemini_api"))
+            self.assertEqual(constructor.call_args.kwargs["api_key"], "fallback")
         self.assertEqual(ai.RETRIES.attempts, 3)
         self.assertEqual(ai.RETRIES.http_status_codes, [429, 500, 502, 503, 504])
 
