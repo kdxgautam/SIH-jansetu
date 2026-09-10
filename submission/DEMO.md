@@ -5,10 +5,11 @@ deployed prototype, so a short walkthrough is worth recording.
 
 ## Demo video link
 
-`<PASTE_YOUTUBE_OR_GOOGLE_DRIVE_VIDEO_LINK_HERE>`
+[Demo video (Google Drive)](https://drive.google.com/drive/folders/1-sVTEnGEMpwg4abO0D2a-73zSsLiS5oR?usp=sharing)
 
-Set sharing to "anyone with the link can view" and check it in an incognito
-window. Reviewers must not have to request access.
+Sharing must be set to "anyone with the link can view", on the folder **and** on
+the video file inside it. Check the link in an incognito window before
+submitting — reviewers must not have to request access.
 
 ## Live prototype
 
