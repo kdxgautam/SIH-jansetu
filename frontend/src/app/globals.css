@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-:root { --forest: #245742; --forest-dark: #163c2d; --ink: #20392e; --muted: #627067; --line: #dfe5de; --paper: #fbfcfa; --soft: #f1f5ef; --white: #fff; --radius: 12px; --ease-out: cubic-bezier(.23, 1, .32, 1); --ease-drawer: cubic-bezier(.32, .72, 0, 1); }
+:root { --forest: #245742; --forest-dark: #163c2d; --ink: #20392e; --muted: #627067; --line: #dfe5de; --paper: #fbfcfa; --soft: #f1f5ef; --white: #fff; --radius: 12px; --header-h: 82px; --ease-out: cubic-bezier(.23, 1, .32, 1); --ease-drawer: cubic-bezier(.32, .72, 0, 1); }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 100px; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: Arial, "Noto Sans Devanagari", sans-serif; font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
@@ -43,7 +43,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .skip-link:focus { top: 12px; }
 .demo-banner { min-height: 29px; padding: 5px 20px; font-size: 11px; letter-spacing: .2px; text-align: center; background: #eef2e8; color: #4e6149; }
 .site-header { position: sticky; top: 0; z-index: 20; background: rgba(251,252,250,.98); border-bottom: 1px solid var(--line); }
-.nav-container { max-width: 1320px; margin: auto; min-height: 82px; display: flex; align-items: center; gap: 38px; padding: 14px 32px; }
+.nav-container { max-width: 1320px; margin: auto; min-height: var(--header-h); display: flex; align-items: center; gap: 38px; padding: 14px 32px; }
 .brand { display: inline-flex; align-items: center; gap: 11px; flex-shrink: 0; }
 .brand-mark { width: 42px; height: 44px; background: var(--forest); color: white; display: grid; place-items: center; border-radius: 11px 11px 11px 2px; }
 .brand strong { display: block; font-size: 25px; line-height: 1.05; letter-spacing: -.9px; font-weight: 700; }
@@ -269,7 +269,7 @@ input[type="file"]::file-selector-button { border: 0; border-radius: 5px; backgr
 .demo-role-grid button { background: var(--soft); border: 1px solid var(--line); border-radius: 7px; min-height: 40px; padding: 8px; color: var(--forest); font-size: 12px; }
 .demo-role-grid button:hover { border-color: #91ad8a; }
 .workspace-layout { display: grid; grid-template-columns: 234px minmax(0, 1fr); max-width: 1600px; margin: auto; min-height: calc(100dvh - 110px); }
-.sidebar { padding: 30px 19px 24px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: #f8faf5; }
+.sidebar { padding: 30px 19px 24px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: #f8faf5; position: sticky; top: var(--header-h); align-self: start; height: calc(100dvh - var(--header-h)); overflow-y: auto; overscroll-behavior: contain; }
 .workspace-label { font-size: 16px; font-weight: 600; padding-inline: 12px; margin-bottom: 28px; }
 .workspace-label small { display: block; font-size: 10px; font-weight: 400; letter-spacing: .5px; color: var(--muted); margin-top: 4px; }
 .sidebar nav { display: flex; flex-direction: column; gap: 6px; }
@@ -461,7 +461,7 @@ input[type="checkbox"] { accent-color: var(--forest); width: 17px; height: 17px;
   .ecosystem-layout { gap: 28px; } .ecosystem-grid > div { flex-direction: column; align-items: flex-start; padding: 18px; }
   .ecosystem-layout h2 { font-size: 27px; } .detail-grid { grid-template-columns: minmax(0,1fr) 230px; gap: 18px; } .panel { padding: 20px; }
   .auth-page { gap: 35px; } .auth-story { padding: 30px; } .auth-story h1 { font-size: 35px; }
-  .workspace-layout { display: block; } .sidebar { padding: 14px 20px; border-right: none; border-bottom: 1px solid var(--line); }
+  .workspace-layout { display: block; } .sidebar { padding: 14px 20px; border-right: none; border-bottom: 1px solid var(--line); position: static; height: auto; overflow: visible; }
   .workspace-label { display: none; } .sidebar nav { flex-direction: row; gap: 6px; overflow: auto; padding: 4px; }
   .sidebar nav a { white-space: nowrap; flex-shrink: 0; padding: 9px 11px; } .sidebar-bottom { padding: 0; margin: 10px 0 0; display: flex; align-items: center; justify-content: space-between; }
   .sidebar-home { display: none; } .profile { margin: 0; padding: 0; border: 0; } .profile small { display: none; }
