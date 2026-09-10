@@ -11,15 +11,14 @@ in the middle, so the sequence always reads as one journey.
 
 | File | What it shows |
 |---|---|
-| `01-public-portal-hindi-mobile.png` | Public portal, Hindi, mobile width |
-| `02-government-challenge-review.png` | Government reviewing a private report |
-| `03-university-workspace-overview.png` | University workspace and assigned challenges |
-| `04-university-proposal-milestones.png` | Approved proposal and reviewed milestones |
-| `05-industry-workspace-overview.png` | Industry partner workspace |
-| `06-industry-ai-opportunity-matches.png` | AI opportunity matching for a partner |
-| `07-industry-project-access.png` | Partner access to an active project |
-| `08-resolved-challenge-lifecycle-hindi.png` | Full resolved lifecycle, single long capture |
-| `09-government-analytics-dashboard.png` | Analytics across domains and districts |
+| `01-government-challenge-review.png` | Government reviewing a private report |
+| `02-university-workspace-overview.png` | University workspace and assigned challenges |
+| `03-university-proposal-milestones.png` | Approved proposal and reviewed milestones |
+| `04-industry-workspace-overview.png` | Industry partner workspace |
+| `05-industry-ai-opportunity-matches.png` | AI opportunity matching for a partner |
+| `06-industry-project-access.png` | Partner access to an active project |
+| `07-resolved-challenge-lifecycle-hindi.png` | Full resolved lifecycle, single long capture |
+| `08-government-analytics-dashboard.png` | Analytics across domains and districts |
 
 ## Capturing new screenshots
 

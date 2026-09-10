@@ -54,16 +54,21 @@ Two design commitments run through all of it. AI never decides: no classificatio
 
 ## Screenshots
 
-Ordered the way the workflow runs: public entry, government review, university delivery, industry partnership, then the validated result.
+Ordered the way the workflow runs: government review, university delivery, then industry partnership.
 
 | | |
 |---|---|
-| ![Public portal in Hindi at mobile width](assets/screenshots/01-public-portal-hindi-mobile.png)<br>**01 · Public portal** — Hindi, mobile width. Only approved summaries are shown. | ![Government reviewing a challenge](assets/screenshots/02-government-challenge-review.png)<br>**02 · Government review** — the private report, review note and lifecycle progress. |
-| ![University workspace overview](assets/screenshots/03-university-workspace-overview.png)<br>**03 · University workspace** — assigned challenges and delivery status at a glance. | ![Approved proposal and milestones](assets/screenshots/04-university-proposal-milestones.png)<br>**04 · Proposal and milestones** — approved budget and duration, with reviewed milestone evidence. |
-| ![Industry partner workspace](assets/screenshots/05-industry-workspace-overview.png)<br>**05 · Industry workspace** — the partner's view of projects and offers. | ![AI opportunity matches for an industry partner](assets/screenshots/06-industry-ai-opportunity-matches.png)<br>**06 · AI opportunity matching** — reviewed projects ranked against the organization profile. No offer is sent automatically. |
-| ![Industry partner viewing an active project](assets/screenshots/07-industry-project-access.png)<br>**07 · Partner project access** — granted only after the lead university accepts the offer. | ![Government analytics dashboard](assets/screenshots/09-government-analytics-dashboard.png)<br>**09 · Analytics** — domain, district and lifecycle distribution with approved impact totals. |
+| ![Government reviewing a challenge](assets/screenshots/01-government-challenge-review.png)<br>**01 · Government review** — the private report, review note and lifecycle progress. | ![University workspace overview](assets/screenshots/02-university-workspace-overview.png)<br>**02 · University workspace** — assigned challenges and delivery status at a glance. |
+| ![Approved proposal and milestones](assets/screenshots/03-university-proposal-milestones.png)<br>**03 · Proposal and milestones** — approved budget and duration, with reviewed milestone evidence. | ![Industry partner workspace](assets/screenshots/04-industry-workspace-overview.png)<br>**04 · Industry workspace** — the partner's view of projects and offers. |
+| ![AI opportunity matches for an industry partner](assets/screenshots/05-industry-ai-opportunity-matches.png)<br>**05 · AI opportunity matching** — reviewed projects ranked against the organization profile. No offer is sent automatically. | ![Industry partner viewing an active project](assets/screenshots/06-industry-project-access.png)<br>**06 · Partner project access** — granted only after the lead university accepts the offer. |
 
-**08 · [Full resolved lifecycle, in Hindi](assets/screenshots/08-resolved-challenge-lifecycle-hindi.png)** — one long capture of a completed challenge: original report, team, approved proposal, milestone evidence, industry support, the validated outcome (120 beneficiaries, 8 → 31), attachments, discussion and the complete activity log.
+**07 · [Full resolved lifecycle, in Hindi](assets/screenshots/07-resolved-challenge-lifecycle-hindi.png)** — one long capture of a completed challenge: original report, team, approved proposal, milestone evidence, industry support, the validated outcome (120 beneficiaries, 8 → 31), attachments, discussion and the complete activity log.
+
+**08 · Analytics for government departments**
+
+![Government analytics dashboard](assets/screenshots/08-government-analytics-dashboard.png)
+
+Domain, district and lifecycle distribution with approved impact totals, funding committed and project completion rate.
 
 Further browser evidence covering all four roles, both languages and the AI
 fallback paths is in [artifacts/playwright/REPORT.md](artifacts/playwright/REPORT.md).
