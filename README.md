@@ -26,10 +26,14 @@ All seeded institutions, people, project records, and outcomes are demonstration
 
 | Member | Role |
 |---|---|
-| `<NAME>` | `<ROLE>` |
-| `<NAME>` | `<ROLE>` |
+| Gautam Bajaj | Full-stack developer |
+| Gautam Kumar Dipanshu | Full-stack developer |
+| Lakshay | Backend developer |
+| Monis | Frontend developer |
+| Vaishnavi | Frontend developer |
+| Komal | Research and design |
 
-Copy the Team ID exactly from the SIH portal before submitting, and fill in each member's name and role.
+Copy the Team ID exactly from the SIH portal before submitting.
 
 ## How JanSetu addresses the problem statement
 
