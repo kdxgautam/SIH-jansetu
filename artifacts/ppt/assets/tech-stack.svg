@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="720" viewBox="0 0 1800 720">
+  <rect width="1800" height="720" fill="#fafaf8"/>
+  <style>
+    .kicker{font:600 22px Arial,sans-serif;letter-spacing:4px;fill:#002FA7}
+    .title{font:300 58px Arial,sans-serif;fill:#0a0a0a}
+    .lane{fill:#f0f0ee}
+    .lane-accent{fill:#002FA7}
+    .lane-title{font:600 18px Arial,sans-serif;letter-spacing:3px;fill:#737373}
+    .lane-title-on{font:600 18px Arial,sans-serif;letter-spacing:3px;fill:#fff}
+    .name{font:500 24px Arial,sans-serif;fill:#0a0a0a}
+    .name-on{font:500 24px Arial,sans-serif;fill:#fff}
+    .detail{font:400 17px Arial,sans-serif;fill:#525252}
+    .detail-on{font:400 17px Arial,sans-serif;fill:#fff}
+    .rule{stroke:#d4d4d2;stroke-width:2}
+    .flow{stroke:#002FA7;stroke-width:5;fill:none}
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#002FA7"/>
+    </marker>
+  </defs>
+
+  <text x="70" y="60" class="kicker">JANSETU / DEPLOYED MVP</text>
+  <text x="70" y="122" class="title">Technology stack and service boundary</text>
+  <line x1="70" y1="155" x2="1730" y2="155" class="rule"/>
+
+  <rect x="70" y="195" width="370" height="430" class="lane"/>
+  <rect x="500" y="195" width="370" height="430" class="lane"/>
+  <rect x="930" y="195" width="370" height="430" class="lane"/>
+  <rect x="1360" y="195" width="370" height="430" class="lane-accent"/>
+
+  <text x="100" y="235" class="lane-title">01 / EXPERIENCE</text>
+  <image href="tech-stack/nextjs.svg" x="100" y="275" width="64" height="64"/>
+  <text x="185" y="310" class="name">Next.js</text>
+  <image href="tech-stack/typescript.svg" x="100" y="375" width="64" height="64"/>
+  <text x="185" y="410" class="name">TypeScript</text>
+  <image href="tech-stack/tailwindcss.svg" x="100" y="475" width="64" height="64"/>
+  <text x="185" y="510" class="name">Tailwind CSS</text>
+  <text x="100" y="585" class="detail">Bilingual responsive web UI</text>
+
+  <text x="530" y="235" class="lane-title">02 / BUSINESS RULES</text>
+  <image href="tech-stack/fastapi.svg" x="530" y="275" width="64" height="64"/>
+  <text x="615" y="310" class="name">FastAPI</text>
+  <image href="tech-stack/python.svg" x="530" y="375" width="64" height="64"/>
+  <text x="615" y="410" class="name">Python 3.12</text>
+  <text x="530" y="500" class="name">SQLAlchemy + Alembic</text>
+  <text x="530" y="585" class="detail">Auth, access and lifecycle checks</text>
+
+  <text x="960" y="235" class="lane-title">03 / DATA</text>
+  <image href="tech-stack/postgresql.svg" x="960" y="275" width="64" height="64"/>
+  <text x="1045" y="310" class="name">PostgreSQL</text>
+  <text x="960" y="410" class="name">Neon-ready connection</text>
+  <text x="960" y="475" class="name">Private evidence store</text>
+  <text x="960" y="585" class="detail">Transactional records and audit trail</text>
+
+  <text x="1390" y="235" class="lane-title-on">04 / AI + CLOUD</text>
+  <image href="tech-stack/gemini.svg" x="1390" y="275" width="64" height="64"/>
+  <text x="1475" y="310" class="name-on">Gemini</text>
+  <image href="tech-stack/googlecloud.svg" x="1390" y="375" width="64" height="64"/>
+  <text x="1475" y="410" class="name-on">Vertex AI / Cloud Run</text>
+  <image href="tech-stack/docker.svg" x="1390" y="475" width="64" height="64"/>
+  <text x="1475" y="510" class="name-on">Docker + Vercel</text>
+  <text x="1390" y="585" class="detail-on">Advisory AI; authorised humans decide</text>
+
+  <path d="M440 410 H485" class="flow" marker-end="url(#arrow)"/>
+  <path d="M870 410 H915" class="flow" marker-end="url(#arrow)"/>
+  <path d="M1300 410 H1345" class="flow" marker-end="url(#arrow)"/>
+  <text x="70" y="685" class="detail">Browser /api/v1  →  FastAPI  →  PostgreSQL · private storage  ↔  Gemini advisory services</text>
+</svg>

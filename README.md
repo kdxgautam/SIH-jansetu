@@ -4,6 +4,66 @@ A working English/Hindi societal innovation MVP using Next.js, FastAPI, custom s
 
 All seeded institutions, people, project records, and outcomes are demonstration data. This is not an official government service.
 
+## Project information
+
+| Field | Value |
+|---|---|
+| Problem Statement ID | **26043** |
+| Problem Statement Title | A digital platform to crowdsource societal challenges and facilitate collaborative problem solving through universities and industry partnerships |
+| Organization | Government of Jharkhand |
+| Department | Department of Higher & Technical Education |
+| Category | Software |
+| Theme | Smart Education |
+| Project Title | JanSetu — Jharkhand Societal Innovation Portal |
+| Live prototype | https://jansetu-jharkhand.vercel.app |
+
+## Team
+
+| Field | Value |
+|---|---|
+| Team ID | `<REGISTERED_TEAM_ID>` |
+| Team Name | `<REGISTERED_TEAM_NAME>` |
+
+| Member | Role |
+|---|---|
+| `<NAME>` | `<ROLE>` |
+| `<NAME>` | `<ROLE>` |
+
+Copy the Team ID and Team Name exactly from the SIH portal before submitting.
+
+## How JanSetu addresses the problem statement
+
+Each expected-solution component from PS 26043, and where it is implemented:
+
+| Required component | Status | Implementation |
+|---|---|---|
+| Citizen engagement module with multimedia evidence, location and supporting information | Built | Bilingual submission with district, locality, optional GPS, and up to five JPEG/PNG/PDF/MP4 attachments of 20 MB each, validated by extension, media type, signature and size |
+| AI-enabled categorization, prioritization, deduplication and routing | Built | Gemini structured output classifies the domain, explains priority, drafts bilingual public copy, and proposes duplicates and universities from bounded candidate sets. Suggestions are stored apart from decisions; reviewers approve every one |
+| University collaboration module: review, multidisciplinary teams, faculty mentors, proposals | Built | Assignment accept/decline, student and faculty members with disciplines, and an approach/budget/duration proposal with a government revision loop |
+| Industry partnership module: mentoring, funding, prototyping, pilots, technology transfer | Built | All five support kinds, with project access granted only after the lead university accepts the offer. Funding is a recorded commitment, not a payment |
+| Project lifecycle management: milestones, approvals, testing outcomes, IP, implementation status | Built | Milestone evidence with government approval, then a validated outcome carrying beneficiaries, a baseline/result impact measure, testing evidence, and patent and startup counts |
+| Visual analytics dashboard across domains, districts, institutions and outcomes | Built | Public and government dashboards covering domain, district, status and monthly distribution, completion rate, committed funding, and approved beneficiary, patent and startup totals |
+| Notification and communication system across all stakeholders | Built | In-app notifications and a per-challenge discussion for authorised participants, written in the same transaction as the lifecycle change that triggers them |
+| Submission through a web **and mobile** interface | Partial | Responsive web across phone, tablet and desktop. There is no native mobile app; see Move the database to Neon later for deferred scope |
+
+Two design commitments run through all of it. AI never decides: no classification, publication, rejection, deduplication, assignment, partnership, plan, evidence or validation is ever applied without an authorised person approving it. Public pages expose only reviewed titles, summaries, district, domain, stage, lead institution and approved aggregates, never identities, raw reports, exact localities, GPS, attachments or discussions.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Public portal in Hindi](assets/screenshots/01-public-portal-hindi-mobile.png) | ![Resolved challenge lifecycle](assets/screenshots/02-challenge-lifecycle-resolved.png) |
+| ![Industry AI opportunity matches](assets/screenshots/03-industry-ai-opportunity-matches.png) | ![Government analytics dashboard](assets/screenshots/04-government-analytics-dashboard.png) |
+
+Further browser evidence covering all four roles, both languages and the AI
+fallback paths is in [artifacts/playwright/REPORT.md](artifacts/playwright/REPORT.md).
+
+## Submission
+
+- Presentation: [submission/PRESENTATION.md](submission/PRESENTATION.md)
+- Demo video: [submission/DEMO.md](submission/DEMO.md)
+- Deployment design: [DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md)
+
 ## Run locally
 
 Requirements: Node.js 22+, Python 3.12, [uv](https://docs.astral.sh/uv/), and Docker with Compose.

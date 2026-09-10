@@ -1,0 +1,44 @@
+# Demo Video
+
+The demo video is **optional** for SIH 2026 submission. JanSetu has a working
+deployed prototype, so a short walkthrough is worth recording.
+
+## Demo video link
+
+`<PASTE_YOUTUBE_OR_GOOGLE_DRIVE_VIDEO_LINK_HERE>`
+
+Set sharing to "anyone with the link can view" and check it in an incognito
+window. Reviewers must not have to request access.
+
+## Live prototype
+
+The portal is deployed and can be reviewed directly, with or without a video:
+
+- **Portal:** https://jansetu-jharkhand.vercel.app
+- **API health:** https://jansetu-jharkhand.vercel.app/api/v1/health
+
+Demo accounts and the default password are listed in the
+[main README](../README.md#demo-accounts). Every seeded institution, person and
+outcome is demonstration data.
+
+## Suggested walkthrough
+
+The lifecycle spans four roles, so the video is clearest if it follows one
+challenge end to end rather than touring pages:
+
+1. **Problem** — communities identify local issues with no structured route to
+   university and industry expertise.
+2. **Citizen** — submit a challenge in Hindi with district, locality and photo
+   evidence.
+3. **Government** — review the private report, use the AI classification and
+   bilingual summary drafts, then approve, prioritise and assign a university.
+4. **University** — accept the assignment, form a student and faculty team,
+   submit a proposal, and record milestone evidence.
+5. **Industry** — discover the reviewed opportunity and offer mentorship or a
+   funding commitment.
+6. **Government** — validate the outcome, resolving the challenge.
+7. **Analytics** — show the dashboard totals and the public page, making the
+   point that only approved summaries and aggregates are ever public.
+
+Worth showing explicitly: the English/Hindi switch, and that AI only drafts
+suggestions while authorised people make every decision.
