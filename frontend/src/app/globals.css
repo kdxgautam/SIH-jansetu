@@ -113,6 +113,17 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .impact-item h3 { font-size: 16px; margin: 0 0 7px; }
 .impact-item p { color: var(--muted); font-size: 12px; line-height: 1.75; margin: 0; max-width: 520px; }
 .impact-number { color: #81907e; font-size: 11px; letter-spacing: .8px; padding-top: 3px; }
+.faq-section { background: #f0f4ee; border-bottom: 1px solid #e9eee6; }
+.faq-layout { display: grid; grid-template-columns: .78fr 1.22fr; gap: 100px; align-items: start; }
+.faq-intro h2 { max-width: 390px; margin-bottom: 18px; }
+.faq-intro > p { color: var(--muted); max-width: 370px; font-size: 14px; line-height: 1.85; }
+.faq-list { border-top: 1px solid #d8e1d5; }
+.faq-list details { border-bottom: 1px solid #d8e1d5; }
+.faq-list summary { display: flex; align-items: center; justify-content: space-between; gap: 22px; list-style: none; padding: 20px 0; color: var(--ink); font-size: 14px; font-weight: 600; }
+.faq-list summary::-webkit-details-marker { display: none; }
+.faq-list summary::after { content: "+"; color: var(--forest); font-size: 22px; font-weight: 400; line-height: 1; }
+.faq-list details[open] summary::after { content: "−"; }
+.faq-list details p { max-width: 620px; padding: 0 42px 21px 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
 .ecosystem-section { background: #edf2e7; padding-block: 54px; }
 .ecosystem-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; align-items: center; }
 .ecosystem-layout h2 { max-width: 390px; }
@@ -331,7 +342,7 @@ input[type="checkbox"] { accent-color: var(--forest); width: 17px; height: 17px;
   .workspace-layout { grid-template-columns: 206px minmax(0,1fr); } .workspace-main { padding: 30px 25px 55px; }
   .workspace-detail { grid-template-columns: minmax(0,1fr); } .workspace-detail > aside { display: grid; grid-template-columns: 1fr 1fr; }
   .analytics-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); } .workspace-metrics { grid-template-columns: repeat(2,1fr); }
-  .ecosystem-layout { gap: 45px; }
+  .ecosystem-layout { gap: 45px; } .faq-layout { gap: 45px; }
 }
 @media (max-width: 800px) {
   .container { padding-inline: 22px; } .nav-container { padding: 11px 20px; min-height: 75px; gap: 16px; }
@@ -346,7 +357,7 @@ input[type="checkbox"] { accent-color: var(--forest); width: 17px; height: 17px;
   .challenge-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .community-section .challenge-card:last-child { display: none; }
   .section-space { padding-block: 48px; } .section-heading h2 { font-size: 27px; } .section-heading { gap: 20px; flex-wrap: wrap; }
   .process-grid { gap: 24px; } .process-grid h3 { font-size: 16px; } .process-grid p { font-size: 12px; }
-  .impact-layout { grid-template-columns: 1fr; gap: 40px; } .impact-intro h2 { max-width: 560px; }
+  .impact-layout { grid-template-columns: 1fr; gap: 40px; } .impact-intro h2 { max-width: 560px; } .faq-layout { grid-template-columns: 1fr; gap: 40px; }
   .ecosystem-layout { gap: 28px; } .ecosystem-grid > div { flex-direction: column; align-items: flex-start; padding: 18px; }
   .ecosystem-layout h2 { font-size: 27px; } .detail-grid { grid-template-columns: minmax(0,1fr) 230px; gap: 18px; } .panel { padding: 20px; }
   .auth-page { gap: 35px; } .auth-story { padding: 30px; } .auth-story h1 { font-size: 35px; }
