@@ -1,0 +1,27 @@
+export type User = { id: string; name: string; email: string; role: "citizen" | "government" | "university" | "industry"; organization_id: string | null };
+export type Challenge = {
+  id: string; public_title_en: string; public_title_hi: string; summary_en: string; summary_hi: string;
+  district: string; domain: string; status: string; created_at: string; project_id: string | null; university_name: string | null;
+  beneficiaries: number; patents: number; startups: number;
+  title?: string; description?: string; submitter_type?: string; locality?: string; latitude?: number | null; longitude?: number | null;
+  owner_id?: string; university_id?: string | null; priority?: string; review_note?: string; duplicate_of_id?: string | null;
+  ai_status?: string; ai_suggestions?: AIResult | null; revision?: number; updated_at?: string;
+};
+export type AIResult = { domain: string; priority: string; reason_en: string; reason_hi: string; public_title_en: string; public_title_hi: string; summary_en: string; summary_hi: string; duplicates: Match[]; universities: Match[] };
+type Match = { id: string; reason_en: string; reason_hi: string };
+export type CitizenGuidance = { language: "en" | "hi"; suggested_title: string; suggested_description: string; questions: string[] };
+export type AIProjectPlan = { language: "en" | "hi"; approach: string; duration_weeks: number; milestones: { title: string; week: number }[] };
+export type AIOpportunityMatches = { matches: { challenge_id: string; support_kind: string; reason_en: string; reason_hi: string }[] };
+export type AIOutcomeAssessment = { recommendation: "approve" | "request_changes"; reason_en: string; reason_hi: string; evidence_gaps: string[]; metric_observations: string[] };
+export type Organization = { id: string; name: string; kind: string; district: string; domains: string[]; expertise: string; facilities: string };
+export type Member = { id: string; name: string; discipline: string; kind: string };
+export type Proposal = { id: string; approach: string; budget: number; duration_weeks: number; status: string; review_note: string };
+export type Milestone = { id: string; title: string; due_date: string; status: string; evidence: string; review_note: string };
+export type Partnership = { id: string; project_id: string; challenge_id?: string; organization_id: string; organization_name?: string; kind: string; description: string; amount: number; status: string };
+export type Outcome = { id: string; beneficiaries: number; metric: string; unit: string; baseline: number; result: number; testing_evidence: string; patents: number; startups: number; innovation_details: string; status: string; review_note: string; citizen_feedback: string; ai_status: string; ai_suggestions: AIOutcomeAssessment | null };
+export type Project = { id: string; challenge_id: string; university_id: string; team: Member[]; proposal: Proposal | null; milestones: Milestone[]; partnerships: Partnership[]; outcome: Outcome | null };
+export type Notification = { id: string; challenge_id: string; event: string; read: boolean; created_at: string };
+export type Analytics = { challenges: number; projects: number; resolved: number; universities: number; industry_partners: number; partnerships: number; funding_committed: number; completion_rate: number; beneficiaries: number; patents: number; startups: number; by_domain: Record<string, number>; by_district: Record<string, number>; by_status: Record<string, number>; by_month: Record<string, number>; updated_at: string };
+export type Discussion = { id: string; body: string; author_name: string; author_role: string; created_at: string };
+export type Activity = { id: string; action: string; actor_name: string; created_at: string };
+export type Attachment = { id: string; filename: string; content_type: string; size: number };
