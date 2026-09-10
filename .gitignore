@@ -22,3 +22,5 @@ htmlcov/
 .ruff_cache/
 .DS_Store
 Thumbs.db
+artifacts
+PPT_CONTENT_JANSETU.md
