@@ -2,6 +2,7 @@ import hashlib
 import os
 import secrets
 from datetime import timedelta
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pwdlib import PasswordHash
@@ -17,6 +18,35 @@ passwords = PasswordHash.recommended()
 DUMMY_HASH = passwords.hash("a-random-dummy-password-for-timing")
 COOKIE = "sih_session"
 ORIGIN = os.getenv("APP_ORIGIN", "http://localhost:3000").rstrip("/")
+configured_origins = os.getenv("APP_ORIGINS") or ORIGIN
+ALLOWED_ORIGINS = {value.strip().rstrip("/") for value in configured_origins.split(",") if value.strip()}
+PREVIEW_PREFIX = os.getenv("APP_ORIGIN_PREVIEW_PREFIX", "").strip().lower()
+PREVIEW_SUFFIX = os.getenv("APP_ORIGIN_PREVIEW_SUFFIX", "").strip().lower()
+
+
+def origin_allowed(value: str):
+    origin = value.rstrip("/")
+    if origin in ALLOWED_ORIGINS:
+        return True
+    if not PREVIEW_PREFIX or not PREVIEW_SUFFIX:
+        return False
+    parsed = urlsplit(origin)
+    host = (parsed.hostname or "").lower()
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and parsed.path in ("", "/")
+        and not parsed.query
+        and not parsed.fragment
+        and parsed.username is None
+        and parsed.password is None
+        and port is None
+        and host.startswith(PREVIEW_PREFIX)
+        and host.endswith(PREVIEW_SUFFIX)
+    )
 
 
 def fail(code, status=400):

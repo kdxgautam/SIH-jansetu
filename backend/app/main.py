@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from .auth import ORIGIN, router as auth_router
+from .auth import origin_allowed, router as auth_router
 from .db import engine
 from .routes import router
 
@@ -22,7 +22,7 @@ app.include_router(router, prefix="/api/v1")
 async def security_and_logging(request: Request, call_next):
     started = time.monotonic()
     if request.method not in ("GET", "HEAD", "OPTIONS"):
-        if request.headers.get("origin", "").rstrip("/") != ORIGIN:
+        if not origin_allowed(request.headers.get("origin", "")):
             return JSONResponse({"detail": {"code": "invalid_origin"}}, status_code=403)
         length = request.headers.get("content-length")
         if length and (not length.isdigit() or int(length) > 21 * 1024 * 1024):
