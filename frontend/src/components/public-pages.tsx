@@ -4,7 +4,7 @@ import Image from "next/image";
 import {
   ArrowRight, ArrowUpRight, MapPin, Lightbulb, Handshake, UsersThree, GraduationCap,
   Buildings, ShieldCheck, Leaf, MagnifyingGlass, Drop, Plant, Lightning, FirstAid,
-  CheckCircle, Sparkle, Trophy, Broadcast, CaretRight
+  CheckCircle, Sparkle, Trophy, Broadcast, CaretRight, Pause, Play
 } from "@phosphor-icons/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -17,18 +17,18 @@ import { SupportForm } from "./project-forms";
 const heroSlides = [
   {
     src: "/hero-collab-hires.jpg",
-    alt: "Field collaboration on solar water purification",
-    caption: "Clean Water Mission · IIT Kharagpur & Village Elders",
+    alt: "hero_slide_water_alt",
+    caption: "hero_slide_water_caption",
   },
   {
     src: "/women-shg-hires.jpg",
-    alt: "Women Self-Help Group agro-machinery co-design",
-    caption: "Women SHG Agro-Innovation · Gumla District",
+    alt: "hero_slide_women_alt",
+    caption: "hero_slide_women_caption",
   },
   {
     src: "/rural-edu-hires.jpg",
-    alt: "Interactive solar digital classrooms in rural schools",
-    caption: "Smart Solar Classrooms · Khunti Primary School",
+    alt: "hero_slide_school_alt",
+    caption: "hero_slide_school_caption",
   },
 ];
 
@@ -38,13 +38,44 @@ export function HomePage() {
   const challenges = useResource<Challenge[]>("/public/challenges?limit=3");
   const [activeRole, setActiveRole] = useState<"citizen" | "university" | "industry" | "government">("citizen");
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [captionSlide, setCaptionSlide] = useState(0);
+  const [autoplay, setAutoplay] = useState(true);
+  const [interactionPaused, setInteractionPaused] = useState(false);
+  const [pageVisible, setPageVisible] = useState(true);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % heroSlides.length);
-    }, 2000);
-    return () => clearInterval(timer);
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => {
+      setReducedMotion(query.matches);
+      if (query.matches) setAutoplay(false);
+    };
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
   }, []);
+
+  useEffect(() => {
+    const update = () => setPageVisible(document.visibilityState === "visible");
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+
+  useEffect(() => {
+    if (!autoplay || interactionPaused || !pageVisible) return;
+    const timer = window.setTimeout(() => setCurrentSlide(prev => (prev + 1) % heroSlides.length), 6000);
+    return () => window.clearTimeout(timer);
+  }, [autoplay, currentSlide, interactionPaused, pageVisible]);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setCaptionSlide(currentSlide);
+      return;
+    }
+    const timer = window.setTimeout(() => setCaptionSlide(currentSlide), 300);
+    return () => window.clearTimeout(timer);
+  }, [currentSlide, reducedMotion]);
 
   const topDistricts = ["Ranchi", "Dhanbad", "Palamu", "Hazaribagh", "East Singhbhum", "Bokaro", "Dumka"];
 
@@ -88,7 +119,18 @@ export function HomePage() {
 
       {/* Immersive Photo Background Hero with Auto-Slide */}
       <section className="hero-banner-container container">
-        <div className="hero-banner">
+        <div
+          className="hero-banner"
+          role="region"
+          aria-roledescription="carousel"
+          aria-label={t("hero_carousel")}
+          onMouseEnter={() => setInteractionPaused(true)}
+          onMouseLeave={() => setInteractionPaused(false)}
+          onFocusCapture={() => setInteractionPaused(true)}
+          onBlurCapture={event => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInteractionPaused(false);
+          }}
+        >
           {heroSlides.map((slide, idx) => (
             <div
               key={slide.src}
@@ -96,7 +138,7 @@ export function HomePage() {
             >
               <Image
                 src={slide.src}
-                alt={slide.alt}
+                alt={idx === currentSlide ? t(slide.alt) : ""}
                 fill
                 priority={idx === 0}
                 quality={95}
@@ -130,15 +172,25 @@ export function HomePage() {
           </div>
           <div className="hero-banner-badge">
             <Leaf size={16} weight="duotone" />
-            <span>{heroSlides[currentSlide].caption}</span>
+            <span aria-live="polite">{t(heroSlides[captionSlide].caption)}</span>
             <div className="hero-slide-dots">
+              <button
+                type="button"
+                className="hero-carousel-toggle"
+                onClick={() => setAutoplay(value => !value)}
+                aria-label={t(autoplay ? "carousel_pause" : "carousel_play")}
+                aria-pressed={!autoplay}
+              >
+                {autoplay ? <Pause size={13} weight="fill" aria-hidden="true" /> : <Play size={13} weight="fill" aria-hidden="true" />}
+              </button>
               {heroSlides.map((_, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setCurrentSlide(i)}
                   className={`hero-dot ${i === currentSlide ? "active" : ""}`}
-                  aria-label={`Slide ${i + 1}`}
+                  aria-label={`${t("carousel_slide")} ${i + 1} ${t("carousel_of")} ${heroSlides.length}`}
+                  aria-current={i === currentSlide ? "true" : undefined}
                 />
               ))}
             </div>
@@ -208,7 +260,7 @@ export function HomePage() {
             <div>
               <div className="eyebrow">
                 <span className="eyebrow-line" />
-                VERIFIED OUTCOMES
+                {t("stories_eyebrow")}
               </div>
               <h2>{t("stories_title")}</h2>
               <p>{t("stories_copy")}</p>
@@ -224,7 +276,7 @@ export function HomePage() {
               <div className="story-image-wrap">
                 <Image
                   src="/water-project.jpg"
-                  alt="Fluoride remediation water project in Palamu"
+                  alt={t("story1_alt")}
                   width={600}
                   height={340}
                   sizes="(max-width: 768px) 100vw, 33vw"
@@ -235,7 +287,7 @@ export function HomePage() {
                 <h3>{t("story1_title")}</h3>
                 <p>{t("story1_desc")}</p>
                 <div className="story-meta">
-                  <span><strong>120</strong> Households Safe</span>
+                  <span><strong>120</strong> {t("story_households_safe")}</span>
                   <span><strong>8.4 → 1.1</strong> mg/L</span>
                 </div>
               </div>
@@ -245,7 +297,7 @@ export function HomePage() {
               <div className="story-image-wrap">
                 <Image
                   src="/solar-irrigation.jpg"
-                  alt="Solar drip irrigation in Ranchi"
+                  alt={t("story2_alt")}
                   width={600}
                   height={340}
                   sizes="(max-width: 768px) 100vw, 33vw"
@@ -256,8 +308,8 @@ export function HomePage() {
                 <h3>{t("story2_title")}</h3>
                 <p>{t("story2_desc")}</p>
                 <div className="story-meta">
-                  <span><strong>60%</strong> Cost Saved</span>
-                  <span><strong>2x</strong> Annual Crops</span>
+                  <span><strong>60%</strong> {t("story_cost_saved")}</span>
+                  <span><strong>2x</strong> {t("story_annual_crops")}</span>
                 </div>
               </div>
             </article>
@@ -266,7 +318,7 @@ export function HomePage() {
               <div className="story-image-wrap">
                 <Image
                   src="/community-health.jpg"
-                  alt="Community health and diagnostics in Hazaribagh"
+                  alt={t("story3_alt")}
                   width={600}
                   height={340}
                   sizes="(max-width: 768px) 100vw, 33vw"
@@ -277,8 +329,8 @@ export function HomePage() {
                 <h3>{t("story3_title")}</h3>
                 <p>{t("story3_desc")}</p>
                 <div className="story-meta">
-                  <span><strong>15</strong> Panchayats</span>
-                  <span><strong>Field</strong> Point-of-Care</span>
+                  <span><strong>15</strong> {t("story_panchayats")}</span>
+                  <span><strong>{t("story_field")}</strong> {t("story_point_of_care")}</span>
                 </div>
               </div>
             </article>
@@ -293,7 +345,7 @@ export function HomePage() {
             <div>
               <div className="eyebrow center-eyebrow">
                 <span className="eyebrow-line" />
-                COMMUNITY PERSPECTIVES
+                {t("reviews_eyebrow")}
                 <span className="eyebrow-line" />
               </div>
               <h2>{t("reviews_title")}</h2>
@@ -363,6 +415,8 @@ export function HomePage() {
                   type="button"
                   onClick={() => setActiveRole(roleKey)}
                   className={`role-tab-btn ${activeRole === roleKey ? "active" : ""}`}
+                  aria-pressed={activeRole === roleKey}
+                  aria-controls="role-pathway-panel"
                 >
                   <RoleIcon size={20} weight="duotone" />
                   <span>{t(roleKey)}</span>
@@ -372,7 +426,7 @@ export function HomePage() {
           </div>
 
           {/* Active Role Card Showcase */}
-          <div className="active-role-card">
+          <div id="role-pathway-panel" className="active-role-card" aria-live="polite">
             <div className="role-card-left">
               <div className="role-header-icon">
                 {(() => {
@@ -489,7 +543,7 @@ export function HomePage() {
           <div>
             <div className="eyebrow">
               <span className="eyebrow-line" />
-              THE JANSETU METHOD
+              {t("process_eyebrow")}
             </div>
             <h2>{t("process_title")}</h2>
           </div>
