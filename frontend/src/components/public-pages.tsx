@@ -6,7 +6,7 @@ import {
   Buildings, ShieldCheck, Leaf, MagnifyingGlass, Drop, Plant, Lightning, FirstAid,
   CheckCircle, Sparkle, Trophy, Broadcast, CaretRight, Pause, Play
 } from "@phosphor-icons/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useResource } from "@/lib/api";
 import type { Analytics, Challenge, Organization } from "@/lib/types";
@@ -43,6 +43,9 @@ export function HomePage() {
   const [interactionPaused, setInteractionPaused] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const workflowRef = useRef<HTMLElement>(null);
+  const [workflowReady, setWorkflowReady] = useState(false);
+  const [workflowVisible, setWorkflowVisible] = useState(false);
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -76,6 +79,27 @@ export function HomePage() {
     const timer = window.setTimeout(() => setCaptionSlide(currentSlide), 300);
     return () => window.clearTimeout(timer);
   }, [currentSlide, reducedMotion]);
+
+  useEffect(() => {
+    const node = workflowRef.current;
+    setWorkflowReady(true);
+    if (!node || reducedMotion) {
+      setWorkflowVisible(true);
+      return;
+    }
+    if (!("IntersectionObserver" in window)) {
+      setWorkflowVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setWorkflowVisible(true);
+        observer.disconnect();
+      }
+    }, { threshold: 0.16, rootMargin: "0px 0px -8%" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [reducedMotion]);
 
   const topDistricts = ["Ranchi", "Dhanbad", "Palamu", "Hazaribagh", "East Singhbhum", "Bokaro", "Dumka"];
 
@@ -166,13 +190,15 @@ export function HomePage() {
               </Link>
               <Link href="/challenges" className="button hero-btn-secondary large">
                 {t("explore")}
-                <ArrowUpRight size={20} />
+                <ArrowRight size={20} />
               </Link>
             </div>
           </div>
-          <div className="hero-banner-badge">
-            <Leaf size={16} weight="duotone" />
-            <span aria-live="polite">{t(heroSlides[captionSlide].caption)}</span>
+          <div className="hero-banner-footer">
+            <div className="hero-banner-badge">
+              <Leaf size={16} weight="duotone" />
+              <span aria-live="polite">{t(heroSlides[captionSlide].caption)}</span>
+            </div>
             <div className="hero-slide-dots">
               <button
                 type="button"
@@ -251,6 +277,47 @@ export function HomePage() {
             </div>
           </div>
         )}
+      </section>
+
+      {/* Community-to-resolution workflow */}
+      <section id="how-it-works" ref={workflowRef} className={`workflow-section section-space ${workflowReady ? "workflow-ready" : ""} ${workflowVisible ? "is-visible" : ""}`}>
+        <div className="container">
+          <div className="section-heading workflow-heading">
+            <div>
+              <div className="eyebrow">
+                <span className="eyebrow-line" />
+                {t("process_eyebrow")}
+              </div>
+              <h2>{t("workflow_title")}</h2>
+              <p>{t("workflow_copy")}</p>
+            </div>
+          </div>
+          <div className="workflow-diagram">
+            <ol className="workflow-flow" aria-label={t("workflow_aria")}>
+              {[
+                { n: "01", title: "workflow_community_title", copy: "workflow_community_copy", icon: UsersThree },
+                { n: "02", title: "workflow_government_title", copy: "workflow_government_copy", icon: ShieldCheck },
+                { n: "03", title: "workflow_university_title", copy: "workflow_university_copy", icon: GraduationCap },
+                { n: "04", title: "workflow_validate_title", copy: "workflow_validate_copy", icon: CheckCircle },
+                { n: "05", title: "workflow_benefit_title", copy: "workflow_benefit_copy", icon: Leaf }
+              ].map(stage => (
+                <li key={stage.n} className="workflow-stage">
+                  <div className="workflow-stage-top">
+                    <span className="workflow-stage-icon"><stage.icon size={25} weight="duotone" /></span>
+                    <span className="workflow-stage-number">{stage.n}</span>
+                  </div>
+                  <h3>{t(stage.title)}</h3>
+                  <p>{t(stage.copy)}</p>
+                </li>
+              ))}
+            </ol>
+            <div className="workflow-branch">
+              <span className="workflow-branch-stem" aria-hidden="true" />
+              <Handshake size={20} weight="duotone" aria-hidden="true" />
+              <span><strong>{t("workflow_industry_title")}</strong><small>{t("workflow_industry_copy")}</small></span>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Field Projects Photo Showcase */}
@@ -534,35 +601,6 @@ export function HomePage() {
               <ArrowRight size={14} />
             </Link>
           </div>
-        </div>
-      </section>
-
-      {/* How it Works Section */}
-      <section id="how-it-works" className="container section-space process-section">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">
-              <span className="eyebrow-line" />
-              {t("process_eyebrow")}
-            </div>
-            <h2>{t("process_title")}</h2>
-          </div>
-        </div>
-        <div className="process-grid">
-          {[
-            { n: "01", title: "step1_title", copy: "step1_copy", icon: Lightbulb },
-            { n: "02", title: "step2_title", copy: "step2_copy", icon: Handshake },
-            { n: "03", title: "step3_title", copy: "step3_copy", icon: Leaf }
-          ].map(s => (
-            <article key={s.n}>
-              <div className="process-top">
-                <s.icon size={30} weight="duotone" />
-                <span className="step-num">{s.n}</span>
-              </div>
-              <h3>{t(s.title)}</h3>
-              <p>{t(s.copy)}</p>
-            </article>
-          ))}
         </div>
       </section>
 
