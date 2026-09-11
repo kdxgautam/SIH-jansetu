@@ -213,7 +213,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 /* Modern Solid Stats */
 .stats-strip-modern { padding-block: 36px 44px; }
 .modern-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
-.modern-stat-card { display: flex; align-items: flex-start; gap: 16px; background: #ffffff; border: 1px solid #dce5da; border-radius: 14px; padding: 22px; box-shadow: 0 4px 18px rgba(36, 87, 66, 0.04); transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.modern-stat-card { display: flex; align-items: flex-start; gap: 16px; background: #ffffff; border: 1px solid #dce5da; border-radius: 14px; padding: 22px; box-shadow: 0 4px 18px rgba(36, 87, 66, 0.04); }
 .stat-card-icon { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 12px; flex-shrink: 0; }
 .icon-emerald { background: #eaf4eb; color: #21613f; }
 .icon-blue { background: #edf4fa; color: #205c82; }
@@ -227,9 +227,9 @@ svg { flex-shrink: 0; vertical-align: middle; }
 /* Field Projects Photo Showcase */
 .field-stories-section { background: #f7faf5; border-block: 1px solid #e4ece1; }
 .field-stories-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-.story-card { background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #dce5da; box-shadow: 0 6px 20px rgba(36, 87, 66, 0.04); display: flex; flex-direction: column; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.story-card { background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #dce5da; box-shadow: 0 6px 20px rgba(36, 87, 66, 0.04); display: flex; flex-direction: column; }
 .story-image-wrap { position: relative; overflow: hidden; height: 210px; background: #e6eee3; }
-.story-image-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
+.story-image-wrap img { width: 100%; height: 100%; object-fit: cover; }
 .story-district-tag { position: absolute; bottom: 12px; left: 12px; background: rgba(18, 48, 36, 0.88); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #ffffff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; }
 .story-content { padding: 22px; display: flex; flex-direction: column; flex: 1; }
 .story-content h3 { font-size: 17px; margin-bottom: 10px; color: #163c2d; line-height: 1.4; letter-spacing: -0.2px; }
@@ -240,7 +240,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 /* Community Voices & Reviews */
 .community-reviews-section { background: #ffffff; }
 .reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-.review-card { background: #fbfdfa; border: 1px solid #e1ebe0; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; transition: transform .18s ease, border-color .18s ease; }
+.review-card { background: #fbfdfa; border: 1px solid #e1ebe0; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; }
 .review-quote { font-size: 14px; line-height: 1.75; color: #2e4738; font-style: italic; margin-bottom: 24px; }
 .review-author-info { display: flex; align-items: center; gap: 14px; border-top: 1px solid #e9f0e8; padding-top: 16px; }
 .review-author-avatar { width: 42px; height: 42px; border-radius: 50%; background: #e3ede1; color: #245742; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
@@ -277,7 +277,6 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .districts-pill-grid { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .district-chip { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; background: #f0f5ee; border: 1px solid #d6e2d3; color: #2a4736; font-size: 13px; font-weight: 600; transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s var(--ease-out); }
 .district-chip .chip-arrow { opacity: .5; transition: transform .16s ease; }
-.district-chip:hover .chip-arrow { transform: translateX(3px); opacity: 1; }
 .chip-all { background: #245742; color: #ffffff; border-color: #245742; }
 
 /* Ecosystem Banner */
@@ -287,7 +286,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .banner-content p { color: #b7d6c4; font-size: 15px; line-height: 1.7; max-width: 500px; margin-bottom: 24px; }
 .banner-cta-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .banner-icons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.banner-role-pill { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 18px; display: flex; align-items: center; gap: 12px; color: #ffffff; font-weight: 600; font-size: 13px; transition: background .2s ease; }
+.banner-role-pill { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 18px; display: flex; align-items: center; gap: 12px; color: #ffffff; font-weight: 600; font-size: 13px; }
 .active-role-card > *, .ecosystem-banner-card > * { min-width: 0; }
 
 @media (hover: hover) and (pointer: fine) {
@@ -316,7 +315,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 }
 @media (max-width: 600px) {
   .hero-banner { min-height: auto; border-radius: 16px; }
-  .hero-banner-content { padding: 36px 20px 124px; }
+  .hero-banner-content { padding: 36px 20px 148px; }
   .hero-banner-badge { bottom: 14px; right: 72px; left: 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); justify-content: initial; font-size: 11px; }
   .hero-slide-dots { grid-column: 1 / -1; justify-self: center; margin-left: 0; padding-left: 0; border-left: 0; }
   .hero-actions { flex-direction: column; align-items: stretch; }
@@ -734,6 +733,8 @@ input[type="checkbox"] { accent-color: var(--forest); width: 17px; height: 17px;
   .metric-row { gap: 20px; } .metric-row strong { font-size: 22px; }
 }
 @media (max-width: 360px) {
+  .hero-actions { align-items: flex-start; }
+  .hero-actions .button { width: calc(100% - 56px); max-width: 100%; white-space: normal; text-align: center; }
   .chat-launcher { width: 50px; padding-inline: 0; justify-content: center; }
   .chat-launcher span { display: none; }
   .nav-login { width: 34px; padding-inline: 0; font-size: 0; }
