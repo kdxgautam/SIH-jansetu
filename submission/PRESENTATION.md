@@ -22,23 +22,3 @@ Six slides, following the official SIH template:
 5. Impact and benefits
 6. Research and references
 
-## Regenerating the deck
-
-The PPTX is generated, not hand-edited. To rebuild it after changing the
-generator:
-
-```sh
-python artifacts/ppt/build_jansetu_sih_deck.py
-```
-
-It writes `submission/BilluSena_SIH2026_Presentation.pptx`. Export a fresh PDF
-from that file before submitting.
-
-## Before submission
-
-- [ ] Fill the Team ID on slide 1 with the value registered on the SIH portal.
-      Do not guess it. Team Name is BilluSena.
-- [ ] Confirm the Problem Statement title and theme match the portal wording
-      exactly.
-- [ ] Re-export the PDF after any slide edit, so both files agree.
-- [ ] Open both links above while logged out and confirm they resolve.

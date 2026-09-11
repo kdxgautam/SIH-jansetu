@@ -1,15 +1,8 @@
-# Demo Video
-
-The demo video is **optional** for SIH 2026 submission. JanSetu has a working
-deployed prototype, so a short walkthrough is worth recording.
 
 ## Demo video link
 
 [Demo video (Google Drive)](https://drive.google.com/drive/folders/1-sVTEnGEMpwg4abO0D2a-73zSsLiS5oR?usp=sharing)
 
-Sharing must be set to "anyone with the link can view", on the folder **and** on
-the video file inside it. Check the link in an incognito window before
-submitting — reviewers must not have to request access.
 
 ## Live prototype
 
@@ -41,5 +34,5 @@ challenge end to end rather than touring pages:
 7. **Analytics** — show the dashboard totals and the public page, making the
    point that only approved summaries and aggregates are ever public.
 
-Worth showing explicitly: the English/Hindi switch, and that AI only drafts
+the English/Hindi switch, and that AI only drafts
 suggestions while authorised people make every decision.

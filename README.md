@@ -77,7 +77,27 @@ fallback paths is in [artifacts/playwright/REPORT.md](artifacts/playwright/REPOR
 
 - Presentation: [submission/PRESENTATION.md](submission/PRESENTATION.md)
 - Demo video: [submission/DEMO.md](submission/DEMO.md)
+- System architecture: [docs/architecture.md](docs/architecture.md)
+- Submission checklist: [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md)
 - Deployment design: [DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md)
+
+## Repository structure
+
+```text
+SIH-2/
+├── frontend/              # Next.js web application
+├── backend/               # FastAPI application, migrations, seed, and tests
+├── docs/architecture.md   # Workflow, deployment, AI, and trust boundaries
+├── assets/screenshots/    # Reviewer-facing product captures
+├── artifacts/             # Browser audit and presentation source assets
+├── submission/            # Final PPTX/PDF, demo link, and walkthrough
+├── compose.yaml           # Local PostgreSQL
+├── SUBMISSION_GUIDE.md
+└── README.md
+```
+
+This uses the SIH template's allowance for normal project folders, keeping the
+working frontend, backend, CI, Vercel, and Cloud Run paths unchanged.
 
 ## Run locally
 
