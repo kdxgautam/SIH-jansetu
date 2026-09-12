@@ -64,8 +64,11 @@ function NextActionPanel({ challenge: c, project }: { challenge: Challenge; proj
     else if (c.status === "in_progress" && project?.milestones.some(m => m.status === "submitted")) { copy = "next_milestone_review"; cta = "open_project"; anchor = "milestones"; }
     else if (c.status === "validation") { copy = "next_outcome_review"; cta = "open_project"; anchor = "outcome"; }
   } else if (user.role === "citizen" && c.owner_id === user.id) {
-    if (c.status === "needs_information") { copy = "next_information"; cta = "update_report"; anchor = "original-report"; }
+    if (c.status === "needs_information") { copy = "next_information"; cta = "update_report"; anchor = "resubmit"; }
     else if (c.status === "resolved") { copy = "next_feedback"; cta = "open_project"; anchor = "feedback"; }
+    else if (["submitted", "validated", "assigned"].includes(c.status)) { copy = "citizen_status_submitted"; cta = "view_progress"; anchor = "progress"; }
+    else if (c.status === "in_progress") { copy = "citizen_status_in_progress"; cta = "view_progress"; anchor = "progress"; }
+    else if (c.status === "validation") { copy = "citizen_status_validation"; cta = "view_progress"; anchor = "progress"; }
   } else if (user.role === "university" && c.university_id === user.organization_id) {
     if (c.status === "assigned" && !project) { copy = "next_accept_assignment"; cta = "open_assignment"; anchor = "assignment"; }
     else if (project && c.status === "assigned" && (!project.proposal || project.proposal.status === "changes_requested")) { copy = "next_team_proposal"; cta = "open_project"; anchor = "proposal"; }

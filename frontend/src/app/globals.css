@@ -459,6 +459,26 @@ input[type="file"]::file-selector-button { border: 0; border-radius: 5px; backgr
 .form-stack > fieldset { display: flex; flex-direction: column; gap: 18px; padding: 0; margin: 0; min-width: 0; border: 0; }
 .form-stack > .button { align-self: flex-start; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.citizen-steps ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; list-style: none; padding: 0; margin: 0 0 22px; }
+.citizen-steps button { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #f7faf5; color: var(--muted); font-size: 12px; font-weight: 700; text-align: left; }
+.citizen-steps button[aria-current="step"] { background: var(--forest); border-color: var(--forest); color: white; }
+.citizen-steps button:not(:disabled):hover { border-color: var(--forest); color: var(--forest); }
+.citizen-step-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 4px 0 8px; }
+.citizen-step-heading h2 { margin: 0 0 6px; font-size: 22px; }
+.citizen-step-heading p { margin: 0; max-width: 650px; color: var(--muted); line-height: 1.65; }
+.citizen-step { display: flex; flex-direction: column; gap: 18px; }
+.citizen-step .field small { font-size: 12px; }
+.voice-field { display: flex; flex-direction: column; gap: 10px; }
+.voice-field .button { align-self: flex-start; }
+.citizen-wizard-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 18px; }
+.citizen-review dl { display: grid; gap: 16px; margin: 0; }
+.citizen-review dl > div { padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fbfdf9; }
+.citizen-review dt { color: var(--muted); font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+.citizen-review dd { margin: 0; line-height: 1.65; }
+.citizen-review dd p { margin: 5px 0 0; white-space: pre-wrap; }
+.advanced-location { border-top: 1px solid var(--line); padding-top: 12px; }
+.advanced-location summary { color: var(--forest); font-size: 13px; font-weight: 700; }
+@media (max-width: 600px) { .citizen-steps ol { grid-template-columns: 1fr 1fr; } .citizen-step-heading h2 { font-size: 20px; } .citizen-step-heading .icon-button { flex: 0 0 auto; } }
 .form-divider { padding-top: 15px; margin-top: 10px; border-top: 1px solid var(--line); }
 .form-divider h3 { margin: 0; }
 .upload-zone { border: 1px dashed #9faf97; border-radius: 9px; background: #f5f8f0; padding: 24px; }
