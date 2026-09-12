@@ -7,27 +7,27 @@ import json
 import logging
 import os
 import tempfile
-import time
 import unittest
 import uuid
-from collections import deque
+from collections import Counter
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import httpx
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from google import genai
 from google.genai import types
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import create_engine, delete, event, func, select, text
 from sqlalchemy.orm import sessionmaker
 
-from app import ai, routes
+from app import ai, auth, storage
 from app.auth import COOKIE, ORIGIN, digest, passwords
 from app.db import Base, DATABASE_URL, engine, get_db, now
 from app.main import app
-from app.models import Activity, AuthAttempt, Challenge, Organization, Session, User
+from app.models import Activity, Attachment, AuthAttempt, Challenge, Milestone, Organization, Outcome, Partnership, Project, Proposal, Session, User
 from app.schemas import CHAT_ANSWER_MAX
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -42,9 +42,9 @@ class WorkflowTest(unittest.TestCase):
         engine.dispose()
 
     def setUp(self):
-        routes.CHAT_ATTEMPTS.clear()
         self.schema = "test_" + uuid.uuid4().hex
         with engine.begin() as connection:
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))  # Trigram search indexes need it present.
             connection.execute(text(f'CREATE SCHEMA "{self.schema}"'))
         self.test_engine = create_engine(DATABASE_URL).execution_options(schema_translate_map={None: self.schema})
         Base.metadata.create_all(self.test_engine)
@@ -61,7 +61,7 @@ class WorkflowTest(unittest.TestCase):
 
         app.dependency_overrides[get_db] = test_db
         self.files = tempfile.TemporaryDirectory()
-        self.file_patch = patch("app.routes.UPLOAD_DIR", Path(self.files.name))
+        self.file_patch = patch("app.storage.UPLOAD_DIR", Path(self.files.name))
         self.file_patch.start()
         self.clients = []
         self.ids = {}
@@ -208,6 +208,10 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual((final["outcome_metric"], final["outcome_baseline"], final["outcome_result"]), ("Water access", 10, 100))
         stats = self.request(self.gov, "GET", "/analytics")
         self.assertEqual((stats["resolved"], stats["funding_committed"], stats["completion_rate"]), (1, 50000, 100))
+        for audience, response in (("public", self.request(self.public, "GET", "/public/analytics")), ("government", stats)):
+            with self.subTest(audience=audience):
+                response.pop("updated_at")
+                self.assertEqual(response, self.counted_from_records(audience == "public"))
         self.assertEqual(self.request(self.citizen, "GET", "/challenges/summary")["resolved"], 1)
         self.assertEqual(self.request(self.other, "GET", "/challenges/summary")["challenges"], 0)
         notifications = self.request(self.citizen, "GET", "/notifications")
@@ -216,6 +220,41 @@ class WorkflowTest(unittest.TestCase):
         self.request(self.citizen, "POST", f"/notifications/{notifications[0]['id']}/read", {})
         with self.sessions() as db:
             self.assertGreater(len(db.scalars(select(Activity).where(Activity.challenge_id == cid)).all()), 12)
+
+    def counted_from_records(self, public):
+        """Count the same portal in Python, as an independent check on the aggregate queries."""
+        with self.sessions() as db:
+            query = select(Challenge).where(Challenge.published.is_(True)) if public else select(Challenge)
+            records = db.scalars(query).all()
+            ids = [c.id for c in records]
+            projects = db.scalars(select(Project).where(Project.challenge_id.in_(ids))).all() if ids else []
+            project_ids = [p.id for p in projects]
+            proposals = db.scalars(select(Proposal).where(Proposal.project_id.in_(project_ids))).all() if project_ids else []
+            milestones = db.scalars(select(Milestone).where(Milestone.project_id.in_(project_ids))).all() if project_ids else []
+            outcomes = db.scalars(select(Outcome).where(Outcome.project_id.in_(project_ids), Outcome.status == "approved")).all() if project_ids else []
+            partnerships = db.scalars(select(Partnership).where(Partnership.project_id.in_(project_ids), Partnership.status == "accepted")).all() if project_ids else []
+        resolved = sum(c.status == "resolved" for c in records)
+        expected = {
+            "challenges": len(records), "projects": len(projects), "resolved": resolved,
+            "universities": len({p.university_id for p in projects}), "industry_partners": len({p.organization_id for p in partnerships}),
+            "partnerships": len(partnerships), "funding_committed": sum(float(p.amount) for p in partnerships if p.kind == "funding"),
+            "completion_rate": round(resolved / len(projects) * 100, 1) if projects else 0,
+            "beneficiaries": sum(o.beneficiaries for o in outcomes), "patents": sum(o.patents for o in outcomes), "startups": sum(o.startups for o in outcomes),
+            "by_domain": dict(Counter(c.domain for c in records)), "by_district": dict(Counter(c.district for c in records)),
+            "by_status": dict(Counter(c.status for c in records)),
+            "by_month": dict(sorted(Counter(c.created_at.strftime("%Y-%m") for c in records).items())),
+        }
+        if not public:
+            proposal_ready = {p.challenge_id for p in projects if any(x.project_id == p.id and x.status == "submitted" for x in proposals)}
+            milestone_ready = {p.challenge_id for p in projects if any(x.project_id == p.id and x.status == "submitted" for x in milestones)}
+            expected["queues"] = {
+                "review": sum(c.status in ("submitted", "needs_information") for c in records),
+                "allocation": sum(c.status == "validated" for c in records),
+                "proposal": sum(c.status == "assigned" and c.id in proposal_ready for c in records),
+                "milestone": sum(c.status == "in_progress" and c.id in milestone_ready for c in records),
+                "outcome": sum(c.status == "validation" for c in records),
+            }
+        return expected
 
     def test_authentication_validation_and_sessions(self):
         self.request(self.public, "POST", "/auth/register", {"name": "Escalation", "email": "attack@test.local", "password": "TestPassword123!", "role": "government"}, 422)
@@ -243,6 +282,31 @@ class WorkflowTest(unittest.TestCase):
         for _ in range(16):
             last = self.public.post("/api/v1/auth/login", json={"email": "rate@test.local", "password": "wrong"})
         self.assertEqual(last.status_code, 429)
+
+    def test_throttle_buckets_callers_separately_behind_a_trusted_proxy(self):
+        def caller(chain, peer="10.0.0.9"):
+            return SimpleNamespace(headers={"x-forwarded-for": chain}, client=SimpleNamespace(host=peer))
+
+        self.assertEqual(auth.client_ip(caller("203.0.113.7")), "10.0.0.9")  # Untrusted by default.
+        with patch.object(auth, "TRUSTED_PROXY_HOPS", 1):
+            self.assertEqual(auth.client_ip(caller("203.0.113.7")), "203.0.113.7")
+            self.assertEqual(auth.client_ip(caller("203.0.113.7:41234")), "203.0.113.7")
+            self.assertEqual(auth.client_ip(caller("[2001:db8::5]:443")), "2001:db8::5")
+            self.assertEqual(auth.client_ip(caller("not-an-address")), "10.0.0.9")
+            self.assertEqual(auth.client_ip(caller("")), "10.0.0.9")
+            # A caller prepending forged hops cannot move itself out of its own bucket.
+            self.assertEqual(auth.client_ip(caller("1.1.1.1, 2.2.2.2, 203.0.113.7")), "203.0.113.7")
+        with patch.object(auth, "TRUSTED_PROXY_HOPS", 2):
+            self.assertEqual(auth.client_ip(caller("203.0.113.7, 198.51.100.4")), "203.0.113.7")
+            self.assertEqual(auth.client_ip(caller("198.51.100.4")), "10.0.0.9")  # Chain shorter than the trusted depth.
+
+        with patch.object(auth, "TRUSTED_PROXY_HOPS", 1), self.sessions() as db:
+            for attempt in range(60):
+                auth.throttle(db, caller("203.0.113.7"), f"crowd{attempt}@test.local")
+            with self.assertRaises(HTTPException) as exhausted:
+                auth.throttle(db, caller("203.0.113.7"), "crowd-next@test.local")
+            self.assertEqual(exhausted.exception.status_code, 429)
+            auth.throttle(db, caller("203.0.113.8"), "neighbour@test.local")  # A different citizen is unaffected.
 
     def test_advisor_chat_public_ai_fallback_and_limits(self):
         request = {"message": "What information stays private?", "language": "en", "page": "home", "history": []}
@@ -287,14 +351,20 @@ class WorkflowTest(unittest.TestCase):
             self.request(self.citizen, "POST", "/ai/chat", replayed)
         self.assertEqual(generate.call_args.args[0]["history"][0]["content"], reply["answer"])
 
-        routes.CHAT_ATTEMPTS.clear()
-        routes.CHAT_ATTEMPTS["stale-user"] = deque([time.monotonic() - 3600])
+        with self.sessions.begin() as db:
+            citizen_id = db.scalar(select(User.id).where(User.email == "citizen@test.local"))
+            chat_key = digest("chat:" + citizen_id)
+            db.execute(delete(AuthAttempt).where(AuthAttempt.key == chat_key))  # Start this check from a full budget.
+            for _ in range(5):  # Questions asked two minutes ago must not consume this minute's budget.
+                db.add(AuthAttempt(key=chat_key, created_at=now() - timedelta(seconds=120)))
         with patch("app.routes.ai.generate", return_value=generated):
             for _ in range(12):
                 self.request(self.citizen, "POST", "/ai/chat", request)
             self.request(self.citizen, "POST", "/ai/chat", request, 429)
-        self.assertNotIn("stale-user", routes.CHAT_ATTEMPTS)  # An idle user is evicted, not kept forever.
-        self.assertEqual(len(routes.CHAT_ATTEMPTS), 1)
+        with self.sessions() as db:
+            # The ceiling lives in the database, so every API instance counts against the same budget.
+            counted = db.scalar(select(func.count()).select_from(AuthAttempt).where(AuthAttempt.key == chat_key))
+        self.assertEqual(counted, 12)
 
     def test_advisor_chat_curated_multistep_flows(self):
         first = self.request(self.public, "POST", "/ai/chat", {
@@ -372,9 +442,108 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(good.status_code, 200)
         self.assertIn("attachment", good.headers["content-disposition"])
         self.assertEqual(good.headers["cache-control"], "no-store")
+        self.assertEqual(good.content, b"%PDF-1.7\nDemo evidence")
+        with self.sessions.begin() as db:
+            db.execute(delete(Attachment).where(Attachment.challenge_id == cid))
+        hindi = self.citizen.post(f"/api/v1/challenges/{cid}/attachments", files={"file": ("साक्ष्य.pdf", b"%PDF-1.7\nDemo evidence", "application/pdf")})
+        self.assertEqual(hindi.status_code, 201, hindi.text)
+        named = self.gov.get(f"/api/v1/attachments/{hindi.json()['id']}")
+        self.assertIn("filename*=UTF-8''", named.headers["content-disposition"])  # A Hindi filename survives the download.
+        for i in range(4):
+            self.citizen.post(f"/api/v1/challenges/{cid}/attachments", files={"file": (f"more-{i}.pdf", b"%PDF-1.7\nDemo evidence", "application/pdf")})
         response = self.citizen.post(f"/api/v1/challenges/{cid}/attachments", files={"file": ("sixth.pdf", b"%PDF-1.7\nDemo evidence", "application/pdf")})
         self.assertEqual(response.status_code, 409)
         self.assertEqual(len(self.request(self.citizen, "GET", f"/challenges/{cid}/attachments")), 5)
+    def test_listing_a_page_costs_the_same_queries_however_many_rows(self):
+        statements = []
+
+        def record(connection, cursor, statement, parameters, context, executemany):
+            statements.append(statement)
+
+        def queries_for(rows):
+            for _ in range(rows):
+                self.create()
+            statements.clear()
+            event.listen(self.test_engine, "before_cursor_execute", record)
+            try:
+                listed = self.request(self.gov, "GET", "/challenges")
+            finally:
+                event.remove(self.test_engine, "before_cursor_execute", record)
+            return len(listed), len(statements)
+
+        small_rows, small_queries = queries_for(2)
+        large_rows, large_queries = queries_for(6)
+        self.assertEqual((small_rows, large_rows), (2, 8))
+        self.assertEqual(small_queries, large_queries)  # Three more rows must not mean nine more queries.
+
+    def test_bucket_storage_keeps_evidence_off_the_container_disk(self):
+        class FakeBlob:
+            def __init__(self, store, path):
+                self.store, self.path = store, path
+
+            def open(self, mode):
+                if mode == "wb":
+                    buffer = io.BytesIO()
+                    store, path = self.store, self.path
+
+                    class Writer:
+                        def __enter__(self):
+                            return buffer
+
+                        def __exit__(self, *error):
+                            store[path] = buffer.getvalue()
+                            return False
+
+                    return Writer()
+                if self.path not in self.store:
+                    raise FileNotFoundError(self.path)
+                return io.BytesIO(self.store[self.path])
+
+            def delete(self):
+                self.store.pop(self.path, None)
+
+        class FakeClient:
+            def __init__(self, store):
+                self.store = store
+
+            def bucket(self, name):
+                return SimpleNamespace(blob=lambda path: FakeBlob(self.store, f"{name}/{path}"))
+
+        objects = {}
+        store = storage.BucketStorage("jansetu-evidence", client=FakeClient(objects))
+        self.assertEqual(store.save("abc123.pdf", io.BytesIO(b"%PDF-1.7 evidence"), 1024), 17)
+        self.assertEqual(objects, {"jansetu-evidence/evidence/abc123.pdf": b"%PDF-1.7 evidence"})
+        self.assertEqual(b"".join(storage.chunks(store.open("abc123.pdf"))), b"%PDF-1.7 evidence")
+        self.assertIsNone(store.open("never-written.pdf"))
+        with self.assertRaises(storage.TooLarge):
+            store.save("toobig.pdf", io.BytesIO(b"x" * 40), 8)
+        self.assertNotIn("jansetu-evidence/evidence/toobig.pdf", objects)  # A rejected upload leaves no object behind.
+        store.delete("abc123.pdf")
+        self.assertEqual(objects, {})
+        self.assertFalse(list(Path(self.files.name).iterdir()))  # Nothing touched the local disk.
+
+    def test_partner_request_review(self):
+        payload = {"kind": "university", "organization_name": "Demo Rural Technology Institute", "contact_name": "Registrar Office",
+                   "email": "Registrar@Demo-RTI.example", "phone": "+91 9876543210", "district": "Ranchi", "domains": ["water", "education"],
+                   "capabilities": "Civil and environmental engineering labs with a field testing station and supervised student project teams."}
+        created = self.request(self.public, "POST", "/partner-requests", payload, 201)
+        self.assertEqual(created["status"], "pending")
+        self.request(self.public, "POST", "/partner-requests", payload, 409)  # one open request per contact
+        self.request(self.public, "POST", "/partner-requests", dict(payload, email="second@demo-rti.example", district="Atlantis"), 422)
+        self.request(self.public, "GET", "/partner-requests", status=401)
+        self.request(self.citizen, "GET", "/partner-requests", status=403)
+        self.request(self.industry, "POST", f"/partner-requests/{created['id']}/review", {"decision": "approve", "note": "Not mine to decide."}, 403)
+        self.assertEqual(len(self.request(self.gov, "GET", "/partner-requests?status=pending")), 1)
+        reviewed = self.request(self.gov, "POST", f"/partner-requests/{created['id']}/review", {"decision": "approve", "note": "Verified with the district office."})
+        self.assertEqual((reviewed["status"], reviewed["email"]), ("approved", "registrar@demo-rti.example"))
+        self.assertTrue(reviewed["organization_id"])
+        with self.sessions() as db:
+            organization = db.get(Organization, reviewed["organization_id"])
+        self.assertEqual((organization.kind, organization.district, organization.domains), ("university", "Ranchi", ["water", "education"]))
+        self.request(self.gov, "POST", f"/partner-requests/{created['id']}/review", {"decision": "decline", "note": "Already decided."}, 409)
+        self.assertEqual(len(self.request(self.gov, "GET", "/partner-requests?status=pending")), 0)
+
+
 
 
 class AIRequestTest(unittest.TestCase):
@@ -419,7 +588,6 @@ class AIRequestTest(unittest.TestCase):
             self.assertEqual(constructor.call_args.kwargs["api_key"], "fallback")
         self.assertEqual(ai.RETRIES.attempts, 3)
         self.assertEqual(ai.RETRIES.http_status_codes, [429, 500, 502, 503, 504])
-
 
 if __name__ == "__main__":
     unittest.main()

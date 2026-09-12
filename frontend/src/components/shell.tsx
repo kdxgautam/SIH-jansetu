@@ -23,7 +23,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     { href: "/workspace", key: "overview", icon: SquaresFour },
     { href: "/workspace/challenges", key: user.role === "government" ? "review_queue" : user.role === "university" ? "assigned_challenges" : user.role === "industry" ? "my_projects" : "my_challenges", icon: CheckSquare },
     ...(user.role === "industry" ? [{ href: "/challenges", key: "opportunities", icon: Compass }, { href: "/workspace/offers", key: "my_offers", icon: Handshake }] : []),
-    ...(user.role === "government" ? [{ href: "/workspace/analytics", key: "analytics", icon: ChartBar }] : []),
+    ...(user.role === "government" ? [{ href: "/workspace/analytics", key: "analytics", icon: ChartBar }, { href: "/workspace/partner-requests", key: "partner_requests", icon: Handshake }] : []),
     ...(user.organization_id ? [{ href: "/workspace/organization", key: "organization", icon: Buildings }] : []),
     { href: "/workspace/notifications", key: "notifications", icon: Bell },
   ];

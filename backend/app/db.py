@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
@@ -18,7 +18,7 @@ class Base(DeclarativeBase):
 
 
 def now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def get_db():

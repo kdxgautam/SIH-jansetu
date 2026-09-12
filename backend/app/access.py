@@ -78,10 +78,36 @@ def record_event(db, challenge, actor, event, details=None):
         db.add(Notification(user_id=recipient, challenge_id=challenge.id, event=event))
 
 
-def present_challenge(db, challenge, private=False, user=None):
-    project = db.scalar(select(Project).where(Project.challenge_id == challenge.id))
-    org = db.get(Organization, challenge.university_id) if challenge.university_id else None
-    outcome = db.scalar(select(Outcome).where(Outcome.project_id == project.id, Outcome.status == "approved")) if project else None
+def challenge_context(db, challenges):
+    """Load the project, lead institution and approved outcome for a whole page at once.
+
+    Presenting a list one record at a time costs three queries per row; a page of
+    24 challenges then opens seventy. These three queries answer the same page.
+    """
+    ids = [c.id for c in challenges]
+    if not ids:
+        return {"projects": {}, "organizations": {}, "outcomes": {}}
+    projects, organizations, outcomes = {}, {}, {}
+    for project in db.scalars(select(Project).where(Project.challenge_id.in_(ids))):
+        projects.setdefault(project.challenge_id, project)
+    university_ids = {c.university_id for c in challenges if c.university_id}
+    if university_ids:
+        organizations = {org.id: org for org in db.scalars(select(Organization).where(Organization.id.in_(university_ids)))}
+    if projects:
+        for outcome in db.scalars(select(Outcome).where(Outcome.project_id.in_([p.id for p in projects.values()]), Outcome.status == "approved")):
+            outcomes.setdefault(outcome.project_id, outcome)
+    return {"projects": projects, "organizations": organizations, "outcomes": outcomes}
+
+
+def present_challenge(db, challenge, private=False, user=None, context=None):
+    if context is None:
+        project = db.scalar(select(Project).where(Project.challenge_id == challenge.id))
+        org = db.get(Organization, challenge.university_id) if challenge.university_id else None
+        outcome = db.scalar(select(Outcome).where(Outcome.project_id == project.id, Outcome.status == "approved")) if project else None
+    else:
+        project = context["projects"].get(challenge.id)
+        org = context["organizations"].get(challenge.university_id) if challenge.university_id else None
+        outcome = context["outcomes"].get(project.id) if project else None
     data = {field: getattr(challenge, field) for field in (
         "id", "public_title_en", "public_title_hi", "summary_en", "summary_hi", "district", "domain", "status", "created_at"
     )}

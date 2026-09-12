@@ -1,31 +1,26 @@
 import logging
-import os
 import re
-import time
 import uuid
-from collections import Counter, deque
 from datetime import timedelta
 from pathlib import Path
-from threading import Lock
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import ai
-from .access import challenge_record, present_challenge, private_challenge, project_record, record_event, require_state, row_data, visible_challenges
-from .auth import current_user, fail, optional_user, require_role
+from .access import challenge_context, challenge_record, present_challenge, private_challenge, project_record, record_event, require_state, row_data, visible_challenges
+from .auth import current_user, fail, limit_bucket, optional_user, require_role, throttle
 from .db import get_db, now
-from .models import Activity, Assignment, Attachment, Challenge, Comment, Milestone, Notification, Organization, Outcome, Partnership, Project, Proposal, TeamMember, User
-from .schemas import AcceptInput, AIChatReply, AIOutcomeAssessment, AIOpportunityMatches, AIProjectPlan, AIResult, AssignmentInput, ChallengeInput, ChatInput, ChatReply, CitizenGuidance, CitizenGuidanceInput, CommentInput, Decision, DISTRICTS, DOMAINS, EvidenceInput, MilestoneInput, OrganizationInput, OutcomeInput, PartnershipInput, PrivateChallenge, ProposalInput, PublicChallenge, ReviewInput, TeamInput
+from .models import Activity, Assignment, Attachment, Challenge, Comment, Milestone, Notification, Organization, Outcome, PartnerRequest, Partnership, Project, Proposal, TeamMember, User
+from .schemas import AcceptInput, AIChatReply, AIOutcomeAssessment, AIOpportunityMatches, AIProjectPlan, AIResult, AssignmentInput, ChallengeInput, ChatInput, ChatReply, CitizenGuidance, CitizenGuidanceInput, CommentInput, Decision, DISTRICTS, DOMAINS, EvidenceInput, MilestoneInput, OrganizationInput, OutcomeInput, PartnerRequestDecision, PartnerRequestInput, PartnerRequestOutput, PartnershipInput, PrivateChallenge, ProposalInput, PublicChallenge, ReviewInput, TeamInput
+from .storage import TooLarge, chunks, storage
 
 router = APIRouter()
 log = logging.getLogger("sih")
 MAX_FILE = 20 * 1024 * 1024
-UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", ".data/uploads")).resolve()
-CHAT_ATTEMPTS: dict[str, deque[float]] = {}
-CHAT_LOCK = Lock()
 CHAT_PRIVATE_PATTERNS = (
     re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I),
     re.compile(r"(?<!\d)(?:\+91[- ]?)?[6-9]\d{9}(?!\d)"),
@@ -270,25 +265,15 @@ def curated_chat(data: ChatInput, user: User | None):
     return ChatReply(language=data.language, answer=answer, suggestions=suggestions, source="curated")
 
 
-def limit_chat(user_id: str):
-    current = time.monotonic()
-    with CHAT_LOCK:
-        for stale in [key for key, times in CHAT_ATTEMPTS.items() if not times or times[-1] <= current - 60]:
-            del CHAT_ATTEMPTS[stale]
-        attempts = CHAT_ATTEMPTS.setdefault(user_id, deque())
-        while attempts and attempts[0] <= current - 60:
-            attempts.popleft()
-        if len(attempts) >= 12:
-            fail("chat_rate_limited", 429)
-        attempts.append(current)
-    # ponytail: this per-process demo limit is not global across Cloud Run instances; use a shared limiter before wider onboarding.
+def limit_chat(db, user_id: str):
+    limit_bucket(db, "chat:" + user_id, 12, 60, "chat_rate_limited")
 
 
 @router.post("/ai/chat", response_model=ChatReply)
-def advisor_chat(data: ChatInput, user: User | None = Depends(optional_user)):
+def advisor_chat(data: ChatInput, user: User | None = Depends(optional_user), db: Session = Depends(get_db, scope="function")):
     if user is None:
         return curated_chat(data, None)
-    limit_chat(user.id)
+    limit_chat(db, user.id)
     payload = {
         "language": data.language,
         "role": user.role,
@@ -332,7 +317,9 @@ def public_challenges(q: str = Query("", max_length=100), district: str = "", do
     for field, value in ((Challenge.district, district), (Challenge.domain, domain), (Challenge.status, status)):
         if value:
             query = query.where(field == value)
-    return [present_challenge(db, c) for c in db.scalars(query.order_by(Challenge.created_at.desc()).offset(offset).limit(limit))]
+    page = db.scalars(query.order_by(Challenge.created_at.desc()).offset(offset).limit(limit)).all()
+    context = challenge_context(db, page)
+    return [present_challenge(db, c, context=context) for c in page]
 
 
 @router.get("/public/challenges/{challenge_id}", response_model=PublicChallenge)
@@ -358,7 +345,9 @@ def challenges(status: str = Query("", pattern=r"^(|submitted|needs_information|
         query = query.where(Challenge.status == "in_progress", select(Milestone.id).join(Project, Milestone.project_id == Project.id).where(Project.challenge_id == Challenge.id, Milestone.status == "submitted").exists())
     elif queue == "outcome":
         query = query.where(Challenge.status == "validation")
-    return [present_challenge(db, c, True, user) for c in db.scalars(query.order_by(Challenge.created_at.desc()).offset(offset).limit(limit))]
+    page = db.scalars(query.order_by(Challenge.created_at.desc()).offset(offset).limit(limit)).all()
+    context = challenge_context(db, page)
+    return [present_challenge(db, c, True, user, context) for c in page]
 
 
 @router.get("/challenges/summary")
@@ -893,24 +882,18 @@ def upload_attachment(challenge_id: str, file: UploadFile = File(...), milestone
     }
     if suffix not in formats or not formats[suffix][1] or file.content_type != formats[suffix][0] or len(name) > 200:
         fail("invalid_file_type", 415)
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     storage_name = uuid.uuid4().hex + suffix
-    path = UPLOAD_DIR / storage_name
-    size = 0
     file.file.seek(0)
     try:
-        with path.open("xb") as output:
-            while chunk := file.file.read(1024 * 1024):
-                size += len(chunk)
-                if size > MAX_FILE:
-                    fail("file_too_large", 413)
-                output.write(chunk)
+        size = storage.save(storage_name, file.file, MAX_FILE)
         attachment = Attachment(challenge_id=c.id, milestone_id=milestone_id, uploader_id=user.id, filename=name, storage_name=storage_name, content_type=formats[suffix][0], size=size)
         db.add(attachment)
         record_event(db, c, user, "evidence_added")
         db.commit()
+    except TooLarge:
+        fail("file_too_large", 413)
     except Exception:
-        path.unlink(missing_ok=True)
+        storage.delete(storage_name)  # Never leave a stored file without the record that authorizes reading it.
         raise
     finally:
         file.file.close()
@@ -923,10 +906,16 @@ def download_attachment(attachment_id: str, user: User = Depends(current_user), 
     if attachment is None:
         fail("not_found", 404)
     private_challenge(db, attachment.challenge_id, user)
-    path = UPLOAD_DIR / attachment.storage_name
-    if not path.is_file():
+    stream = storage.open(attachment.storage_name)
+    if stream is None:
         fail("file_unavailable", 404)
-    return FileResponse(path, media_type=attachment.content_type, filename=attachment.filename, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+    plain = attachment.filename.encode("ascii", "replace").decode("ascii").replace('"', "_")
+    return StreamingResponse(chunks(stream), media_type=attachment.content_type, headers={
+        "Content-Disposition": f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quote(attachment.filename)}",
+        "Content-Length": str(attachment.size),
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
 @router.get("/notifications")
@@ -944,38 +933,74 @@ def read_notification(notification_id: str, user: User = Depends(current_user), 
 
 
 def analytics(db, public):
-    challenge_query = select(Challenge)
-    if public:
-        challenge_query = challenge_query.where(Challenge.published.is_(True))
-    records = db.scalars(challenge_query).all()
-    ids = [c.id for c in records]
-    projects = db.scalars(select(Project).where(Project.challenge_id.in_(ids))).all()
-    project_ids = [p.id for p in projects]
-    proposals = db.scalars(select(Proposal).where(Proposal.project_id.in_(project_ids))).all() if project_ids else []
-    milestones = db.scalars(select(Milestone).where(Milestone.project_id.in_(project_ids))).all() if project_ids else []
-    outcomes = db.scalars(select(Outcome).where(Outcome.project_id.in_(project_ids), Outcome.status == "approved")).all()
-    partnerships = db.scalars(select(Partnership).where(Partnership.project_id.in_(project_ids), Partnership.status == "accepted")).all()
-    resolved = sum(c.status == "resolved" for c in records)
+    """Aggregate the portal in the database rather than by loading every row.
+
+    Both dashboards poll this while their page is visible, so the work has to
+    stay proportional to the number of answers, not to the size of the portal.
+    """
+    scope = (Challenge.published.is_(True),) if public else ()
+    challenges, resolved = db.execute(
+        select(func.count(Challenge.id), func.count(Challenge.id).filter(Challenge.status == "resolved")).where(*scope)
+    ).one()
+    projects, universities = db.execute(
+        select(func.count(Project.id), func.count(func.distinct(Project.university_id)))
+        .select_from(Project).join(Challenge, Challenge.id == Project.challenge_id).where(*scope)
+    ).one()
+    partnerships, industry_partners, funding = db.execute(
+        select(
+            func.count(Partnership.id),
+            func.count(func.distinct(Partnership.organization_id)),
+            func.coalesce(func.sum(Partnership.amount).filter(Partnership.kind == "funding"), 0),
+        )
+        .select_from(Partnership)
+        .join(Project, Project.id == Partnership.project_id)
+        .join(Challenge, Challenge.id == Project.challenge_id)
+        .where(Partnership.status == "accepted", *scope)
+    ).one()
+    beneficiaries, patents, startups = db.execute(
+        select(
+            func.coalesce(func.sum(Outcome.beneficiaries), 0),
+            func.coalesce(func.sum(Outcome.patents), 0),
+            func.coalesce(func.sum(Outcome.startups), 0),
+        )
+        .select_from(Outcome)
+        .join(Project, Project.id == Outcome.project_id)
+        .join(Challenge, Challenge.id == Project.challenge_id)
+        .where(Outcome.status == "approved", *scope)
+    ).one()
+
+    def tally(column, order=None):
+        rows = db.execute(select(column, func.count()).where(*scope).group_by(column).order_by(order if order is not None else column)).all()
+        return {key: count for key, count in rows}
+
+    month = func.to_char(Challenge.created_at, "YYYY-MM")
+    by_status = tally(Challenge.status)
     result = {
-        "challenges": len(records), "projects": len(projects), "resolved": resolved,
-        "universities": len({p.university_id for p in projects}), "industry_partners": len({p.organization_id for p in partnerships}),
-        "partnerships": len(partnerships), "funding_committed": sum(float(p.amount) for p in partnerships if p.kind == "funding"),
-        "completion_rate": round(resolved / len(projects) * 100, 1) if projects else 0,
-        "beneficiaries": sum(o.beneficiaries for o in outcomes), "patents": sum(o.patents for o in outcomes), "startups": sum(o.startups for o in outcomes),
-        "by_domain": dict(Counter(c.domain for c in records)), "by_district": dict(Counter(c.district for c in records)),
-        "by_status": dict(Counter(c.status for c in records)),
-        "by_month": dict(sorted(Counter(c.created_at.strftime("%Y-%m") for c in records).items())),
+        "challenges": challenges, "projects": projects, "resolved": resolved,
+        "universities": universities, "industry_partners": industry_partners,
+        "partnerships": partnerships, "funding_committed": float(funding),
+        "completion_rate": round(resolved / projects * 100, 1) if projects else 0,
+        "beneficiaries": int(beneficiaries), "patents": int(patents), "startups": int(startups),
+        "by_domain": tally(Challenge.domain), "by_district": tally(Challenge.district),
+        "by_status": by_status, "by_month": tally(month),
         "updated_at": now(),
     }
     if not public:
-        proposal_review_ids = {p.challenge_id for p in projects if any(x.project_id == p.id and x.status == "submitted" for x in proposals)}
-        milestone_review_ids = {p.challenge_id for p in projects if any(x.project_id == p.id and x.status == "submitted" for x in milestones)}
+        def waiting(model, challenge_status):
+            return db.scalar(
+                select(func.count(func.distinct(Challenge.id)))
+                .select_from(Challenge)
+                .join(Project, Project.challenge_id == Challenge.id)
+                .join(model, model.project_id == Project.id)
+                .where(Challenge.status == challenge_status, model.status == "submitted")
+            )
+
         result["queues"] = {
-            "review": sum(c.status in ("submitted", "needs_information") for c in records),
-            "allocation": sum(c.status == "validated" for c in records),
-            "proposal": sum(c.status == "assigned" and c.id in proposal_review_ids for c in records),
-            "milestone": sum(c.status == "in_progress" and c.id in milestone_review_ids for c in records),
-            "outcome": sum(c.status == "validation" for c in records),
+            "review": by_status.get("submitted", 0) + by_status.get("needs_information", 0),
+            "allocation": by_status.get("validated", 0),
+            "proposal": waiting(Proposal, "assigned"),
+            "milestone": waiting(Milestone, "in_progress"),
+            "outcome": by_status.get("validation", 0),
         }
     return result
 
@@ -989,3 +1014,48 @@ def public_analytics(db: Session = Depends(get_db, scope="function")):
 def government_analytics(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     require_role(user, "government")
     return analytics(db, False)
+
+
+@router.post("/partner-requests", status_code=201)
+def create_partner_request(data: PartnerRequestInput, request: Request, db: Session = Depends(get_db, scope="function")):
+    """Open to the public: an institution asks to join. Government decides; nothing is granted here."""
+    throttle(db, request, data.email)
+    if db.scalar(select(func.count()).select_from(PartnerRequest).where(PartnerRequest.email == data.email, PartnerRequest.status == "pending")):
+        fail("request_pending", 409)
+    row = PartnerRequest(**data.model_dump())
+    db.add(row)
+    db.flush()
+    return {"id": row.id, "status": row.status}
+
+
+@router.get("/partner-requests", response_model=list[PartnerRequestOutput])
+def partner_requests(status: str = Query("", pattern=r"^(|pending|approved|declined)$"), user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+    require_role(user, "government")
+    query = select(PartnerRequest).order_by(PartnerRequest.created_at.desc())
+    if status:
+        query = query.where(PartnerRequest.status == status)
+    return db.scalars(query.limit(100)).all()
+
+
+@router.post("/partner-requests/{request_id}/review", response_model=PartnerRequestOutput)
+def review_partner_request(request_id: str, data: PartnerRequestDecision, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+    require_role(user, "government")
+    row = db.get(PartnerRequest, request_id)
+    if row is None:
+        fail("not_found", 404)
+    if row.status != "pending":
+        fail("invalid_transition", 409)
+    if data.decision == "approve":
+        # An approved institution becomes assignable at once; its contact still needs an account created separately.
+        existing = db.scalar(select(Organization).where(func.lower(Organization.name) == row.organization_name.lower(), Organization.kind == row.kind))
+        organization = existing or Organization(name=row.organization_name, kind=row.kind, district=row.district, domains=row.domains, expertise=row.capabilities)
+        if existing is None:
+            db.add(organization)
+            db.flush()
+        row.organization_id = organization.id
+    row.status = "approved" if data.decision == "approve" else "declined"
+    row.review_note = data.note
+    row.reviewer_id = user.id
+    row.updated_at = now()
+    db.flush()
+    return row

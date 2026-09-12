@@ -3,20 +3,18 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight, ArrowUpRight, MapPin, Lightbulb, Handshake, UsersThree, GraduationCap,
-  Buildings, ShieldCheck, Leaf, MagnifyingGlass, Drop, Plant, Lightning, FirstAid,
-  CheckCircle, Sparkle, Trophy, Broadcast, CaretRight, Pause, Play
+  Buildings, ShieldCheck, Leaf, CheckCircle, CaretRight, Pause, Play
 } from "@phosphor-icons/react";
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useResource } from "@/lib/api";
-import type { Analytics, Challenge, Organization } from "@/lib/types";
+import type { Analytics, Challenge } from "@/lib/types";
 import { usePortal } from "./providers";
 import { Badge, ChallengeCard, DateText, Empty, ErrorBox, Loading, Panel, Progress, Select } from "./ui";
 import { SupportForm } from "./project-forms";
 
 const heroSlides = [
   {
-    src: "/hero-collab-hires.jpg",
+    src: "/hero-collab.jpg",
     alt: "hero_slide_water_alt",
     caption: "hero_slide_water_caption",
   },
@@ -33,7 +31,7 @@ const heroSlides = [
 ];
 
 export function HomePage() {
-  const { t, lang, user } = usePortal();
+  const { t, user } = usePortal();
   const stats = useResource<Analytics>("/public/analytics");
   const challenges = useResource<Challenge[]>("/public/challenges?limit=3");
   const [activeRole, setActiveRole] = useState<"citizen" | "university" | "industry" | "government">("citizen");
@@ -141,7 +139,8 @@ export function HomePage() {
                 src={slide.src}
                 alt={idx === currentSlide ? t(slide.alt) : ""}
                 fill
-                priority={idx === 0}
+                loading={idx === 0 ? "eager" : "lazy"}
+                fetchPriority={idx === 0 ? "high" : "auto"}
                 sizes="(max-width: 1240px) 100vw, 1240px"
                 className="hero-banner-bg"
                 style={{ objectFit: "cover", objectPosition: "center right" }}
@@ -496,6 +495,7 @@ export function HomePage() {
                   alt={roleDetails[activeRole].title}
                   width={540}
                   height={320}
+                  quality={65}
                   sizes="(max-width: 768px) 100vw, 45vw"
                 />
                 <div className="role-image-overlay">
@@ -568,6 +568,13 @@ export function HomePage() {
       </section>
 
       {/* Interactive FAQ Section */}
+      <section className="join-cta-section section-space">
+        <div className="container join-cta">
+          <div><h2>{t("join_home_title")}</h2><p>{t("join_home_copy")}</p></div>
+          <Link href="/join" className="button primary large">{t("join_cta")}<ArrowRight size={19} /></Link>
+        </div>
+      </section>
+
       <section id="faq" className="faq-section section-space">
         <div className="container faq-layout">
           <div className="faq-intro">

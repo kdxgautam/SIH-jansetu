@@ -34,10 +34,21 @@ Render remains a fallback for a short-lived demo. It is not the primary choice b
 ## Remaining production hardening
 
 The Dockerfile, dependency lockfiles, ambient ADC fallback, ADC test, Node 22
-pin, and CI release checks are present. Before wider onboarding, configure
-trusted proxy address handling for authentication throttling; the current
-peer-IP bucket can group users behind the Vercel proxy and cause false `429`
-responses.
+pin, and CI release checks are present.
+
+Set `TRUSTED_PROXY_HOPS=2` on the Cloud Run revision. Every request arrives from
+the Vercel proxy by way of the Cloud Run front end, so without it the whole user
+base shares one address and one busy minute returns `429` to everyone. The value
+is the number of proxies between the browser and the API that you control, and
+the address is read that many entries from the right of `X-Forwarded-For`, which
+is why a forged prefix cannot widen a caller's own ceiling. Leave it at `0`
+anywhere the API is reached directly.
+
+Evidence storage has two supported shapes. The bucket volume mount below keeps
+`UPLOAD_DIR` pointed at a mounted path. Setting `UPLOAD_BUCKET` instead uses the
+Cloud Storage client directly, which avoids the FUSE mount's latency and its
+partial POSIX semantics; downloads stream through the API either way, so
+authorization is unchanged and no object is ever public.
 
 No CORS middleware is required: browser traffic stays on the Vercel origin and uses the existing `/api/v1` rewrite. `APP_ORIGIN` must exactly equal the final Vercel production origin so mutations and secure cookies work.
 
@@ -161,7 +172,7 @@ gcloud run deploy "$SERVICE" \
   --max=2 \
   --timeout=120 \
   --set-secrets=DATABASE_URL=jansetu-database-pooled:latest \
-  --set-env-vars="APP_ORIGIN=https://$VERCEL_PROJECT.vercel.app,UPLOAD_DIR=/data/uploads,GEMINI_MODEL=gemini-3.8-flash,GOOGLE_CLOUD_LOCATION=global" \
+  --set-env-vars="APP_ORIGIN=https://$VERCEL_PROJECT.vercel.app,TRUSTED_PROXY_HOPS=2,UPLOAD_DIR=/data/uploads,GEMINI_MODEL=gemini-3.8-flash,GOOGLE_CLOUD_LOCATION=global" \
   --add-volume=name=uploads,type=cloud-storage,bucket="$BUCKET" \
   --add-volume-mount=volume=uploads,mount-path=/data/uploads
 ```

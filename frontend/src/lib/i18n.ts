@@ -155,3 +155,31 @@ Object.assign(words, events);
 const districts: Record<string, string> = { Bokaro: "बोकारो", Chatra: "चतरा", Deoghar: "देवघर", Dhanbad: "धनबाद", Dumka: "दुमका", "East Singhbhum": "पूर्वी सिंहभूम", Garhwa: "गढ़वा", Giridih: "गिरिडीह", Godda: "गोड्डा", Gumla: "गुमला", Hazaribagh: "हज़ारीबाग", Jamtara: "जामताड़ा", Khunti: "खूँटी", Koderma: "कोडरमा", Latehar: "लातेहार", Lohardaga: "लोहरदगा", Pakur: "पाकुड़", Palamu: "पलामू", Ramgarh: "रामगढ़", Ranchi: "राँची", Sahibganj: "साहिबगंज", "Seraikela Kharsawan": "सरायकेला खरसावाँ", Simdega: "सिमडेगा", "West Singhbhum": "पश्चिमी सिंहभूम" };
 Object.entries(districts).forEach(([en, hi]) => { words[en] = [en, hi]; });
 export function translate(key: string, lang: Language) { return words[key]?.[lang === "en" ? 0 : 1] || key; }
+
+Object.assign(words, {
+  join_eyebrow: ["JOIN THE PROGRAMME", "कार्यक्रम से जुड़ें"],
+  join_title: ["Bring your institution into JanSetu", "अपनी संस्था को जनसेतु से जोड़ें"],
+  join_copy: ["Universities and industry partners can ask the state innovation cell to add them. A government reviewer reads every request and replies by email.", "विश्वविद्यालय और उद्योग भागीदार राज्य नवाचार प्रकोष्ठ से जुड़ने का अनुरोध कर सकते हैं। सरकारी समीक्षक हर अनुरोध पढ़ते हैं और ईमेल से उत्तर देते हैं।"],
+  join_form_title: ["Request to join", "जुड़ने का अनुरोध"],
+  join_note: ["This form does not create an account or publish anything. Approved institutions are added to the directory and contacted separately.", "यह फ़ॉर्म न खाता बनाता है, न कुछ प्रकाशित करता है। स्वीकृत संस्थाओं को निर्देशिका में जोड़कर अलग से संपर्क किया जाता है।"],
+  join_kind: ["You are", "आप हैं"],
+  join_submit: ["Send request", "अनुरोध भेजें"],
+  join_done_title: ["Request received", "अनुरोध मिल गया"],
+  join_done_copy: ["A government reviewer will check the details and reply to the email address you gave.", "सरकारी समीक्षक विवरण जाँचकर आपके दिए ईमेल पते पर उत्तर देंगे।"],
+  join_home_title: ["Are you a university or industry partner?", "क्या आप विश्वविद्यालय या उद्योग भागीदार हैं?"],
+  join_home_copy: ["Ask the state innovation cell to add your institution, so community challenges can be matched to your expertise.", "राज्य नवाचार प्रकोष्ठ से अपनी संस्था को जोड़ने का अनुरोध करें, ताकि सामुदायिक चुनौतियाँ आपकी विशेषज्ञता से मिलाई जा सकें।"],
+  join_cta: ["Request to join", "जुड़ने का अनुरोध करें"],
+  organization_name: ["Institution name", "संस्था का नाम"],
+  contact_name: ["Contact person", "संपर्क व्यक्ति"],
+  phone: ["Phone (optional)", "फ़ोन (वैकल्पिक)"],
+  capabilities: ["What your institution can contribute", "आपकी संस्था क्या योगदान दे सकती है"],
+  capabilities_hint: ["Laboratories, faculty strengths, field teams, funding or mentoring. Minimum 30 characters.", "प्रयोगशालाएँ, संकाय की क्षमता, क्षेत्रीय टीमें, वित्तीय सहयोग या मार्गदर्शन। कम से कम 30 अक्षर।"],
+  partner_requests: ["Partner requests", "भागीदारी अनुरोध"],
+  partner_request: ["Institution request", "संस्था का अनुरोध"],
+  partner_requests_copy: ["Universities and industry partners asking to join. Approving adds the institution to the directory so it can be allocated challenges.", "जुड़ने के इच्छुक विश्वविद्यालय और उद्योग भागीदार। स्वीकृति देने पर संस्था निर्देशिका में जुड़ जाती है और उसे चुनौतियाँ आवंटित की जा सकती हैं।"],
+  no_partner_requests: ["No requests in this list.", "इस सूची में कोई अनुरोध नहीं है।"],
+  request_pending: ["A request from this email is already awaiting review.", "इस ईमेल से एक अनुरोध पहले से समीक्षा में है।"],
+  speech_denied: ["Microphone access was blocked. Allow it in your browser, or type instead.", "माइक्रोफ़ोन की अनुमति नहीं मिली। ब्राउज़र में अनुमति दें, या टाइप करें।"],
+  speech_no_speech: ["Nothing was heard. Try again, closer to the microphone.", "कुछ सुनाई नहीं दिया। माइक्रोफ़ोन के पास आकर फिर बोलें।"],
+  speech_network: ["Voice typing needs an internet connection.", "आवाज़ से लिखने के लिए इंटरनेट कनेक्शन चाहिए।"],
+});

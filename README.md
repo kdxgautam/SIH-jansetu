@@ -48,7 +48,7 @@ Each expected-solution component from PS 26043, and where it is implemented:
 | Project lifecycle management: milestones, approvals, testing outcomes, IP, implementation status | Built | Milestone evidence with government approval, then a validated outcome carrying beneficiaries, a baseline/result impact measure, testing evidence, and patent and startup counts |
 | Visual analytics dashboard across domains, districts, institutions and outcomes | Built | Public and government dashboards covering domain, district, status and monthly distribution, completion rate, committed funding, and approved beneficiary, patent and startup totals |
 | Notification and communication system across all stakeholders | Built | In-app notifications and a per-challenge discussion for authorised participants, written in the same transaction as the lifecycle change that triggers them |
-| Submission through a web **and mobile** interface | Partial | Responsive web across phone, tablet and desktop. There is no native mobile app; see Move the database to Neon later for deferred scope |
+| Submission through a web **and mobile** interface | Partial | Responsive web across phone, tablet and desktop, installable as a progressive web app with an offline notice and cached assets for intermittent rural connectivity. There is no native mobile app; see Move the database to Neon later for deferred scope |
 
 Two design commitments run through all of it. AI never decides: no classification, publication, rejection, deduplication, assignment, partnership, plan, evidence or validation is ever applied without an authorised person approving it. Public pages expose only reviewed titles, summaries, district, domain, stage, lead institution and approved aggregates, never identities, raw reports, exact localities, GPS, attachments or discussions.
 
@@ -181,13 +181,20 @@ Without valid credentials, or when the provider fails or returns invalid output,
 
 The demo analyzes at most 40 recent challenges, prioritizing the same district, 50 university profiles, and 30 active industry opportunities. These are bounded shortlists, not exhaustive semantic search. Add semantic retrieval when directory size or matching recall requires it. The provider receives only the text needed for each explicit task; it never receives uploaded files, login credentials, GPS coordinates, exact localities, names, or discussion messages.
 
+## Reach and resilience
+
+- Public pages carry per-page titles, descriptions, canonical URLs and generated social preview images, with `sitemap.xml` and `robots.txt`; workspace routes are excluded from both. A challenge link shared in a message shows its title, district, domain and stage rather than a bare URL.
+- Each published challenge is also described as schema.org structured data, in English, because a crawler never makes the language choice a reader makes.
+- The portal installs as a progressive web app. A service worker caches only immutable build assets and images, never portal records or API responses, and shows a bilingual offline notice instead of a browser error when a connection drops.
+- A Content-Security-Policy keeps every script, style, font, frame, form target and endpoint on this origin.
+
 ## Access, evidence, and consistency
 
 - Passwords are hashed with Argon2. Random session tokens are stored as SHA-256 hashes, expire after seven days, and are revoked on logout. Cookies are HttpOnly and SameSite=Lax, with Secure enabled for HTTPS origins. Tokens are not stored in browser storage.
-- All mutations require the configured Origin. Authentication attempts are persisted and serialized with PostgreSQL advisory locks: 15 attempts per normalized email and 60 per API peer IP in 15 minutes. The local Next.js proxy shares the IP bucket; configure trusted proxy addressing before a public rollout.
+- All mutations require the configured Origin. Authentication attempts are persisted and serialized with PostgreSQL advisory locks: 15 attempts per normalized email and 60 per API peer IP in 15 minutes. Behind a proxy, set `TRUSTED_PROXY_HOPS` to the number of proxies you control: the address is then read that many entries from the right of `X-Forwarded-For`, so callers keep separate ceilings and a forged prefix cannot widen anyone's own.
 - Citizen registration always creates a citizen. Every private challenge, project action, organization edit, notification update, and evidence download checks role and ownership or accepted participation in FastAPI.
 - Public response models contain only reviewed titles/summaries, district, domain, stage, lead institution, project reference, and approved aggregate outcomes. Private locations, raw reports, identities, comments, attachments, and unapproved AI drafts are excluded.
-- Evidence allows five files per challenge, each up to 20 MB: JPEG, PNG, PDF, and MP4. The server checks extension, declared media type, signature, and size; generates storage names; and serves authorized downloads as attachments. Failed writes are removed. Uploaded files live under `backend/.data/uploads`, outside public assets.
+- Evidence allows five files per challenge, each up to 20 MB: JPEG, PNG, PDF, and MP4. The server checks extension, declared media type, signature, and size; generates storage names; and serves authorized downloads as attachments. Failed writes are removed. Uploaded files live under `backend/.data/uploads`, outside public assets, or in a private Cloud Storage bucket when `UPLOAD_BUCKET` is set; downloads stream through the API either way, so the same authorization applies.
 - Lifecycle changes lock the challenge row; changes, activity history, and notifications commit together before the response. Duplicate assignment, proposal, offer, and approval actions are rejected. An industry offer confers project access only after university acceptance.
 - Discussions, notification lists, project details, and analytics refresh every 30 seconds while their page is visible. Local React state handles forms; there is no separate realtime server or queue.
 
@@ -195,6 +202,7 @@ The demo analyzes at most 40 recent challenges, prioritizing the same district, 
 
 ```sh
 cd backend
+uv run ruff check app tests
 uv run python -m unittest discover -s tests -v
 uv run alembic check
 uv run python -m compileall -q app
@@ -204,6 +212,7 @@ The integration checks create and drop randomly named PostgreSQL schemas using t
 
 ```sh
 cd frontend
+npm run lint
 npm run typecheck
 npm run build
 npm start
@@ -220,7 +229,7 @@ Validation covers the full workflow, revision branches, duplicate actions, role 
 3. Run `uv run alembic upgrade head` against the new database. This creates the schema; it does not copy existing local data. Transfer data separately with standard PostgreSQL backup/restore tooling if needed.
 4. Point the frontend's `BACKEND_URL` at the deployed FastAPI service, set `APP_ORIGIN` to the public HTTPS frontend origin, and rebuild/restart the services.
 
-Neon hosts the database, not the API or evidence files. Preserve the API upload directory on durable storage or add private object storage before deploying to an ephemeral filesystem. Public deployment, messaging delivery, native apps, payment processing, and account recovery are deferred.
+Neon hosts the database, not the API or evidence files. A container filesystem does not survive a redeploy and is not shared between instances, so keep evidence off it: either mount a private bucket and point `UPLOAD_DIR` at it, or set `UPLOAD_BUCKET` to use Cloud Storage directly. Set `TRUSTED_PROXY_HOPS` to the number of proxies you control in front of the API, or the whole user base shares one address in the sign-in throttle. Public deployment, messaging delivery, native apps, payment processing, and account recovery are deferred.
 
 ## Assets
 

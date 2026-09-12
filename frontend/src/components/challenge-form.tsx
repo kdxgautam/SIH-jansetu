@@ -18,7 +18,7 @@ export async function uploadFiles(id: string, files: File[], milestoneId?: strin
 }
 
 type SpeechResult = { results: ArrayLike<{ 0: { transcript: string } }> };
-type SpeechRecognitionInstance = { lang: string; interimResults: boolean; maxAlternatives: number; onresult: ((event: SpeechResult) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
+type SpeechRecognitionInstance = { lang: string; interimResults: boolean; maxAlternatives: number; onresult: ((event: SpeechResult) => void) | null; onerror: ((event: { error?: string }) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
 
 function speechRecognitionConstructor() {
@@ -53,22 +53,30 @@ export function ChallengeForm({ existing, onDone }: { existing?: Challenge; onDo
   const draftKey = wizard && user ? `jansetu-citizen-draft:${user.id}` : "";
 
   useEffect(() => {
-    setSpeechSupported(typeof window !== "undefined" && "speechSynthesis" in window);
     setDictationSupported(Boolean(speechRecognitionConstructor()));
-    return () => { window.speechSynthesis?.cancel(); recognitionRef.current?.stop(); };
+    const synth = typeof window === "undefined" ? undefined : window.speechSynthesis;
+    const update = () => setSpeechSupported(Boolean(synth && synth.getVoices().length));
+    update();
+    synth?.addEventListener("voiceschanged", update);
+    return () => { synth?.removeEventListener("voiceschanged", update); synth?.cancel(); recognitionRef.current?.stop(); };
   }, []);
   useEffect(() => { if (!wizard || !draftKey) return; try { const raw = sessionStorage.getItem(draftKey); if (raw) { const draft = JSON.parse(raw) as Record<string, string>; setTitle(draft.title || ""); setDescription(draft.description || ""); setSubmitterType(draft.submitterType || "individual"); setDistrict(draft.district || ""); setLocality(draft.locality || ""); } } catch { /* Ignore unavailable storage. */ } setDraftReady(true); }, [draftKey, wizard]);
   useEffect(() => { if (!wizard || !draftKey || !draftReady) return; sessionStorage.setItem(draftKey, JSON.stringify({ title, description, submitterType, district, locality })); }, [description, district, draftKey, draftReady, locality, submitterType, title, wizard]);
-  useEffect(() => { if (!wizard) return; stepRef.current?.focus(); }, [step, wizard]);
+  useEffect(() => { if (!wizard) return; recognitionRef.current?.stop(); stepRef.current?.focus(); }, [step, wizard]);
 
   if (!user || !["citizen", "government"].includes(user.role)) return <ErrorBox code="forbidden" />;
   if (metadata.loading) return <Loading />;
   if (metadata.error) return <ErrorBox code={metadata.error} retry={metadata.refresh} />;
 
   function speak(text: string) {
-    if (!speechSupported) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text); utterance.lang = lang === "hi" ? "hi-IN" : "en-IN"; window.speechSynthesis.speak(utterance);
+    const synth = window.speechSynthesis;
+    if (!speechSupported || !synth) return;
+    synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang === "hi" ? "hi-IN" : "en-IN";
+    const voice = synth.getVoices().find(option => option.lang.toLowerCase().startsWith(lang === "hi" ? "hi" : "en"));
+    if (voice) utterance.voice = voice;
+    synth.speak(utterance);
   }
   function startDictation() {
     const Constructor = speechRecognitionConstructor();
@@ -76,7 +84,11 @@ export function ChallengeForm({ existing, onDone }: { existing?: Challenge; onDo
     recognitionRef.current?.stop();
     const recognition = new Constructor(); recognition.lang = lang === "hi" ? "hi-IN" : "en-IN"; recognition.interimResults = false; recognition.maxAlternatives = 1;
     recognition.onresult = event => { const transcript = event.results[0]?.[0]?.transcript?.trim(); if (transcript) setDescription(current => `${current}${current.trim() ? " " : ""}${transcript}`); };
-    recognition.onerror = () => { setSpeechMessage("speech_error"); setListening(false); }; recognition.onend = () => setListening(false); recognitionRef.current = recognition; setSpeechMessage(undefined); setListening(true); recognition.start();
+    recognition.onerror = event => {
+      const code = event?.error;
+      setSpeechMessage(code === "not-allowed" || code === "service-not-allowed" ? "speech_denied" : code === "no-speech" ? "speech_no_speech" : code === "network" ? "speech_network" : "speech_error");
+      setListening(false);
+    }; recognition.onend = () => setListening(false); recognitionRef.current = recognition; setSpeechMessage(undefined); setListening(true); recognition.start();
   }
   function stopDictation() { recognitionRef.current?.stop(); setListening(false); }
   function validStep() {

@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, Float, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint
 
 from .db import Base, now
 
@@ -79,6 +79,17 @@ class Challenge(Base):
     revision = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime(timezone=True), default=now, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=now, onupdate=now, nullable=False)
+    __table_args__ = (
+        # Public search is a substring match in either language, which no ordinary
+        # index can serve; trigram indexes keep it off a sequential scan.
+        Index("ix_challenges_title_en_trgm", "public_title_en", postgresql_using="gin", postgresql_ops={"public_title_en": "gin_trgm_ops"}),
+        Index("ix_challenges_title_hi_trgm", "public_title_hi", postgresql_using="gin", postgresql_ops={"public_title_hi": "gin_trgm_ops"}),
+        Index("ix_challenges_summary_en_trgm", "summary_en", postgresql_using="gin", postgresql_ops={"summary_en": "gin_trgm_ops"}),
+        Index("ix_challenges_summary_hi_trgm", "summary_hi", postgresql_using="gin", postgresql_ops={"summary_hi": "gin_trgm_ops"}),
+        # Every listing filters then reads newest first.
+        Index("ix_challenges_published_created", "published", "created_at"),
+        Index("ix_challenges_created_at", "created_at"),
+    )
 
 
 class Assignment(Base):
@@ -205,3 +216,27 @@ class Notification(Base):
     event = Column(String(60), nullable=False)
     read = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=now, nullable=False)
+
+
+class PartnerRequest(Base):
+    """A university or industry organization asking government to add it to the programme."""
+    __tablename__ = "partner_requests"
+    id = pk()
+    kind = Column(String(20), nullable=False)
+    organization_name = Column(String(160), nullable=False)
+    contact_name = Column(String(120), nullable=False)
+    email = Column(String(254), nullable=False, index=True)
+    phone = Column(String(20), nullable=False, default="")
+    district = Column(String(60), nullable=False)
+    domains = Column(JSON, nullable=False, default=list)
+    capabilities = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False, default="pending")
+    review_note = Column(Text, nullable=False, default="")
+    reviewer_id = fk("users")
+    organization_id = fk("organizations")
+    created_at = Column(DateTime(timezone=True), default=now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=now, onupdate=now, nullable=False)
+    __table_args__ = (
+        CheckConstraint("kind IN ('university','industry')"),
+        CheckConstraint("status IN ('pending','approved','declined')"),
+    )

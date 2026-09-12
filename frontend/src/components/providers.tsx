@@ -14,6 +14,8 @@ export function Providers({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState(0);
   useEffect(() => { const stored = localStorage.getItem("sih-language"); if (stored === "hi") updateLang("hi"); }, []);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  // Keeps the portal openable on a dropped connection; it caches build assets only, never portal records.
+  useEffect(() => { if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {}); }, []);
   useEffect(() => {
     let active = true;
     setAuthLoading(true); setAuthError(null);

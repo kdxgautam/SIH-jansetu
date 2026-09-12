@@ -814,3 +814,12 @@ input[type="checkbox"] { accent-color: var(--forest); width: 17px; height: 17px;
   .footer-links a, .site-footer .brand { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
   .chat-panel button { min-height: 44px; min-width: 44px; }
 }
+
+.join-cta-section { background: var(--paper); border-block: 1px solid var(--line); }
+.join-cta { display: flex; align-items: center; justify-content: space-between; gap: 26px; flex-wrap: wrap; }
+.join-cta h2 { margin-bottom: 8px; font-size: 25px; }
+.join-cta p { margin: 0; max-width: 560px; color: var(--muted); }
+.join-page .field-label { display: block; margin-bottom: 9px; }
+.join-done { display: flex; align-items: flex-start; gap: 12px; color: var(--forest); }
+.join-done p { margin: 0; color: var(--ink); line-height: 1.65; }
+@media (max-width: 700px) { .join-cta { flex-direction: column; align-items: flex-start; } .join-cta .button { width: 100%; justify-content: center; } }

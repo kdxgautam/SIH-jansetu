@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, ArrowUpRight, Bell, CheckCircle, FileArrowDown, MapPin, Plus, Sparkle } from "@phosphor-icons/react";
-import { api, ApiError, send, useResource } from "@/lib/api";
+import { ApiError, send, useResource } from "@/lib/api";
 import type { Activity, AIOpportunityMatches, AIResult, Analytics, Attachment, Challenge, Discussion, Milestone, Notification, Organization, Partnership, Project } from "@/lib/types";
 import { usePortal } from "./providers";
 

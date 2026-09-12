@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export class ApiError extends Error { constructor(public code: string, public status = 0) { super(code); } }
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -16,21 +16,20 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 export const send = <T,>(path: string, body: unknown, method = "POST") => api<T>(path, { method, body: JSON.stringify(body) });
 
 export function useResource<T>(path: string | null) {
-  const [data, setData] = useState<T>();
-  const [error, setError] = useState<string>();
   const [version, setVersion] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const previousPath = useRef(path);
+  const [settled, setSettled] = useState<{ path: string; data?: T; error?: string } | null>(null);
   const refresh = useCallback(() => setVersion(v => v + 1), []);
   useEffect(() => {
-    if (previousPath.current !== path) { setData(undefined); previousPath.current = path; }
-    if (!path) { setLoading(false); return; }
+    if (!path) return;
     const controller = new AbortController();
-    setLoading(true); setError(undefined);
-    api<T>(path, { signal: controller.signal }).then(value => { if (!controller.signal.aborted) setData(value); })
-      .catch(e => { if (!controller.signal.aborted) { setData(undefined); setError(e instanceof ApiError ? e.code : "network_error"); } })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    api<T>(path, { signal: controller.signal })
+      .then(value => { if (!controller.signal.aborted) setSettled({ path, data: value }); })
+      .catch(e => { if (!controller.signal.aborted) setSettled({ path, error: e instanceof ApiError ? e.code : "network_error" }); });
     return () => controller.abort();
   }, [path, version]);
-  return { data, error, loading, refresh };
+  // Loading means nothing is on screen yet, not that a request is in flight: pages
+  // refresh themselves every half minute, and a reviewer reading a queue should not
+  // watch it turn back into a spinner. Asking for a different path does clear it.
+  const current = settled && settled.path === path ? settled : null;
+  return { data: current?.data, error: current?.error, loading: Boolean(path) && !current, refresh };
 }

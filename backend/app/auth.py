@@ -1,4 +1,5 @@
 import hashlib
+import ipaddress
 import os
 import secrets
 from datetime import timedelta
@@ -22,6 +23,7 @@ configured_origins = os.getenv("APP_ORIGINS") or ORIGIN
 ALLOWED_ORIGINS = {value.strip().rstrip("/") for value in configured_origins.split(",") if value.strip()}
 PREVIEW_PREFIX = os.getenv("APP_ORIGIN_PREVIEW_PREFIX", "").strip().lower()
 PREVIEW_SUFFIX = os.getenv("APP_ORIGIN_PREVIEW_SUFFIX", "").strip().lower()
+TRUSTED_PROXY_HOPS = max(0, int(os.getenv("TRUSTED_PROXY_HOPS", "0") or 0))
 
 
 def origin_allowed(value: str):
@@ -78,10 +80,32 @@ def require_role(user, *roles):
         fail("forbidden", 403)
 
 
+def client_ip(request):
+    """The caller's address, read through exactly TRUSTED_PROXY_HOPS proxies we control.
+
+    Every proxy appends the address it saw to X-Forwarded-For, so the entry our own
+    closest trusted proxy added sits at index -TRUSTED_PROXY_HOPS. Counting from the
+    right keeps a caller from prepending forged entries to widen the ceiling. Without
+    the setting, or when the chain is shorter or malformed, we use the peer address.
+    """
+    if TRUSTED_PROXY_HOPS:
+        chain = [value.strip() for value in request.headers.get("x-forwarded-for", "").split(",") if value.strip()]
+        if len(chain) >= TRUSTED_PROXY_HOPS:
+            candidate = chain[-TRUSTED_PROXY_HOPS]
+            if candidate.startswith("[") and "]" in candidate:
+                candidate = candidate[1:candidate.index("]")]
+            elif candidate.count(":") == 1:
+                candidate = candidate.split(":")[0]
+            try:
+                return ipaddress.ip_address(candidate).compressed
+            except ValueError:
+                pass
+    return request.client.host if request.client else "local"
+
+
 def throttle(db, request, email):
     cutoff = now() - timedelta(minutes=15)
-    # ponytail: proxy peers share the IP ceiling; use a trusted proxy IP policy for a public rollout.
-    keys = [(digest("ip:" + (request.client.host if request.client else "local")), 60), (digest("email:" + email), 15)]
+    keys = [(digest("ip:" + client_ip(request)), 60), (digest("email:" + email), 15)]
     db.execute(delete(AuthAttempt).where(AuthAttempt.created_at < cutoff))
     for key, limit in sorted(keys):
         db.execute(select(func.pg_advisory_xact_lock(int(key[:16], 16) - 2**63)))
@@ -92,6 +116,24 @@ def throttle(db, request, email):
     for key, _ in keys:
         db.add(AuthAttempt(key=key))
     db.commit()  # Persist attempts even when credential validation raises below.
+
+
+def limit_bucket(db, bucket, limit, seconds, code):
+    """Count one action against a shared, database-backed window.
+
+    In-process counters do not survive more than one API instance, so every
+    limit that must hold for a user rather than for a container lives here.
+    """
+    cutoff = now() - timedelta(seconds=seconds)
+    key = digest(bucket)
+    db.execute(select(func.pg_advisory_xact_lock(int(key[:16], 16) - 2**63)))
+    db.execute(delete(AuthAttempt).where(AuthAttempt.key == key, AuthAttempt.created_at < cutoff))
+    count = db.scalar(select(func.count()).select_from(AuthAttempt).where(AuthAttempt.key == key, AuthAttempt.created_at >= cutoff))
+    if count >= limit:
+        db.commit()
+        fail(code, 429)
+    db.add(AuthAttempt(key=key))
+    db.commit()
 
 
 def issue_session(db, user, response):

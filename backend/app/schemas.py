@@ -70,9 +70,8 @@ class ReviewInput(Input):
 
     @model_validator(mode="after")
     def required_fields(self):
-        if self.decision == "validate":
-            if not self.domain or min(len(self.public_title_en), len(self.public_title_hi)) < 8 or min(len(self.summary_en), len(self.summary_hi)) < 30:
-                raise ValueError("public_summaries_required")
+        if self.decision == "validate" and (not self.domain or min(len(self.public_title_en), len(self.public_title_hi)) < 8 or min(len(self.summary_en), len(self.summary_hi)) < 30):
+            raise ValueError("public_summaries_required")
         if self.decision == "duplicate" and not self.duplicate_of_id:
             raise ValueError("duplicate_target_required")
         return self
@@ -294,4 +293,49 @@ class UserOutput(BaseModel):
     email: str
     role: str
     organization_id: str | None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PartnerRequestInput(Input):
+    kind: Literal["university", "industry"]
+    organization_name: str = Field(min_length=3, max_length=160)
+    contact_name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=5, max_length=254, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+    phone: str = Field(default="", max_length=20, pattern=r"^$|^\+?[0-9][0-9 -]{5,19}$")
+    district: str
+    domains: list[Domain] = Field(default_factory=list, max_length=5)
+    capabilities: str = Field(min_length=30, max_length=4000)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return value.lower()
+
+    @field_validator("district")
+    @classmethod
+    def known_district(cls, value):
+        if value not in DISTRICTS:
+            raise ValueError("unknown_district")
+        return value
+
+
+class PartnerRequestDecision(Input):
+    decision: Literal["approve", "decline"]
+    note: str = Field(min_length=3, max_length=2000)
+
+
+class PartnerRequestOutput(BaseModel):
+    id: str
+    kind: str
+    organization_name: str
+    contact_name: str
+    email: str
+    phone: str
+    district: str
+    domains: list[str]
+    capabilities: str
+    status: str
+    review_note: str
+    organization_id: str | None
+    created_at: datetime
     model_config = ConfigDict(from_attributes=True)

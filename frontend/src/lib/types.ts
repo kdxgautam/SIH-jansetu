@@ -28,3 +28,4 @@ export type Analytics = { challenges: number; projects: number; resolved: number
 export type Discussion = { id: string; body: string; author_name: string; author_role: string; created_at: string };
 export type Activity = { id: string; action: string; actor_name: string; created_at: string };
 export type Attachment = { id: string; filename: string; content_type: string; size: number; milestone_id?: string | null };
+export type PartnerRequest = { id: string; kind: string; organization_name: string; contact_name: string; email: string; phone: string; district: string; domains: string[]; capabilities: string; status: string; review_note: string; organization_id: string | null; created_at: string };
