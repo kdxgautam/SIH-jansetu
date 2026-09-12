@@ -177,13 +177,15 @@ class AIResult(Input):
 class CitizenGuidanceInput(Input):
     title: str = Field(min_length=8, max_length=180)
     description: str = Field(min_length=30, max_length=10000)
-    district: str
+    # Optional: the guidance improves the wording of a report, and the reporter is
+    # offered it while writing, before the form has asked where the problem is.
+    district: str = ""
     language: Language
 
     @field_validator("district")
     @classmethod
     def known_district(cls, value):
-        if value not in DISTRICTS:
+        if value and value not in DISTRICTS:
             raise ValueError("unknown_district")
         return value
 

@@ -125,6 +125,12 @@ class WorkflowTest(unittest.TestCase):
         with patch("app.routes.ai.generate", return_value=guidance):
             self.assertEqual(self.request(self.citizen, "POST", "/ai/citizen-guidance", {"title": REPORT["title"], "description": REPORT["description"], "district": "Ranchi", "language": "en"})["language"], "en")
             self.request(self.industry, "POST", "/ai/citizen-guidance", {"title": REPORT["title"], "description": REPORT["description"], "district": "Ranchi", "language": "en"}, 403)
+            # The reporter is offered this while writing, before the form has asked where the
+            # problem is, so guidance must not depend on a district being chosen yet.
+            without_place = {"title": REPORT["title"], "description": REPORT["description"], "language": "en"}
+            self.assertEqual(self.request(self.citizen, "POST", "/ai/citizen-guidance", without_place)["language"], "en")
+            self.assertEqual(self.request(self.citizen, "POST", "/ai/citizen-guidance", {**without_place, "district": ""})["language"], "en")
+            self.request(self.citizen, "POST", "/ai/citizen-guidance", {**without_place, "district": "Outside Jharkhand"}, 422)
         self.request(self.other, "GET", f"/challenges/{cid}", status=404)
         self.request(self.public, "GET", f"/public/challenges/{cid}", status=404)
         self.request(self.citizen, "POST", f"/challenges/{cid}/review", REVIEW, 403)
