@@ -11,7 +11,7 @@ const config: NextConfig = {
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "X-Frame-Options", value: "DENY" },
       { key: "Referrer-Policy", value: "same-origin" },
-      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(self)" },
     ] }];
   },
 };

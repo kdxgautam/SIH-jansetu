@@ -43,9 +43,6 @@ export function HomePage() {
   const [interactionPaused, setInteractionPaused] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const workflowRef = useRef<HTMLElement>(null);
-  const [workflowReady, setWorkflowReady] = useState(false);
-  const [workflowVisible, setWorkflowVisible] = useState(false);
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -80,26 +77,6 @@ export function HomePage() {
     return () => window.clearTimeout(timer);
   }, [currentSlide, reducedMotion]);
 
-  useEffect(() => {
-    const node = workflowRef.current;
-    setWorkflowReady(true);
-    if (!node || reducedMotion) {
-      setWorkflowVisible(true);
-      return;
-    }
-    if (!("IntersectionObserver" in window)) {
-      setWorkflowVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setWorkflowVisible(true);
-        observer.disconnect();
-      }
-    }, { threshold: 0.16, rootMargin: "0px 0px -8%" });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [reducedMotion]);
 
   const topDistricts = ["Ranchi", "Dhanbad", "Palamu", "Hazaribagh", "East Singhbhum", "Bokaro", "Dumka"];
 
@@ -165,7 +142,6 @@ export function HomePage() {
                 alt={idx === currentSlide ? t(slide.alt) : ""}
                 fill
                 priority={idx === 0}
-                quality={95}
                 sizes="(max-width: 1240px) 100vw, 1240px"
                 className="hero-banner-bg"
                 style={{ objectFit: "cover", objectPosition: "center right" }}
@@ -184,13 +160,16 @@ export function HomePage() {
             </h1>
             <p className="hero-description">{t("hero_copy")}</p>
             <div className="hero-actions">
-              <Link href={user ? "/workspace/new" : "/register"} className="button hero-btn-primary large">
-                {t("submit_challenge")}
-                <ArrowRight size={20} />
-              </Link>
-              <Link href="/challenges" className="button hero-btn-secondary large">
+              <Link href="/challenges" className="button hero-btn-primary large">
                 {t("explore")}
                 <ArrowRight size={20} />
+
+              </Link>
+
+              <Link href={user ? "/workspace/new" : "/register"} className="button hero-btn-secondary large">
+                {t("submit_challenge")}
+                <ArrowRight size={20} />
+
               </Link>
             </div>
           </div>
@@ -280,7 +259,7 @@ export function HomePage() {
       </section>
 
       {/* Community-to-resolution workflow */}
-      <section id="how-it-works" ref={workflowRef} className={`workflow-section section-space ${workflowReady ? "workflow-ready" : ""} ${workflowVisible ? "is-visible" : ""}`}>
+      <section id="how-it-works" className="workflow-section section-space">
         <div className="container">
           <div className="section-heading workflow-heading">
             <div>
@@ -321,6 +300,35 @@ export function HomePage() {
       </section>
 
       {/* Field Projects Photo Showcase */}
+      <section className="community-section section-space">
+        <div className="container">
+          <div className="section-heading">
+            <div>
+              <h2>{t("community_title")}</h2>
+              <p>{t("community_copy")}</p>
+            </div>
+            <Link href="/challenges" className="text-link">
+              {t("view_all")}
+              <ArrowRight size={19} />
+            </Link>
+          </div>
+          {challenges.error ? (
+            <ErrorBox code={challenges.error} retry={challenges.refresh} />
+          ) : challenges.loading ? (
+            <Loading />
+          ) : challenges.data?.length ? (
+            <div className="challenge-grid">
+              {challenges.data.map(c => (
+                <ChallengeCard key={c.id} challenge={c} />
+              ))}
+            </div>
+          ) : (
+            <Empty />
+          )}
+        </div>
+      </section>
+
+      {/* Districts Quick Navigation */}
       <section className="field-stories-section section-space">
         <div className="container">
           <div className="section-heading">
@@ -406,58 +414,6 @@ export function HomePage() {
       </section>
 
       {/* Community Voices & Reviews */}
-      <section className="community-reviews-section section-space">
-        <div className="container">
-          <div className="section-heading text-center centered-heading">
-            <div>
-              <div className="eyebrow center-eyebrow">
-                <span className="eyebrow-line" />
-                {t("reviews_eyebrow")}
-                <span className="eyebrow-line" />
-              </div>
-              <h2>{t("reviews_title")}</h2>
-              <p>{t("reviews_copy")}</p>
-            </div>
-          </div>
-
-          <div className="reviews-grid">
-            <div className="review-card">
-              <p className="review-quote">“{t("review1_quote")}”</p>
-              <div className="review-author-info">
-                <div className="review-author-avatar">SD</div>
-                <div>
-                  <strong>{t("review1_author")}</strong>
-                  <span>{t("review1_role")}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="review-card">
-              <p className="review-quote">“{t("review2_quote")}”</p>
-              <div className="review-author-info">
-                <div className="review-author-avatar">AP</div>
-                <div>
-                  <strong>{t("review2_author")}</strong>
-                  <span>{t("review2_role")}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="review-card">
-              <p className="review-quote">“{t("review3_quote")}”</p>
-              <div className="review-author-info">
-                <div className="review-author-avatar">RS</div>
-                <div>
-                  <strong>{t("review3_author")}</strong>
-                  <span>{t("review3_role")}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive Stakeholder Role Pathways */}
       <section className="role-pathway-section section-space">
         <div className="container">
           <div className="section-heading text-center centered-heading">
@@ -553,35 +509,6 @@ export function HomePage() {
       </section>
 
       {/* Community Challenges Grid */}
-      <section className="community-section section-space">
-        <div className="container">
-          <div className="section-heading">
-            <div>
-              <h2>{t("community_title")}</h2>
-              <p>{t("community_copy")}</p>
-            </div>
-            <Link href="/challenges" className="text-link">
-              {t("view_all")}
-              <ArrowRight size={19} />
-            </Link>
-          </div>
-          {challenges.error ? (
-            <ErrorBox code={challenges.error} retry={challenges.refresh} />
-          ) : challenges.loading ? (
-            <Loading />
-          ) : challenges.data?.length ? (
-            <div className="challenge-grid">
-              {challenges.data.map(c => (
-                <ChallengeCard key={c.id} challenge={c} />
-              ))}
-            </div>
-          ) : (
-            <Empty />
-          )}
-        </div>
-      </section>
-
-      {/* Districts Quick Navigation */}
       <section className="districts-strip-section">
         <div className="container">
           <div className="districts-header">
