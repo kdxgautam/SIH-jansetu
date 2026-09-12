@@ -17,7 +17,7 @@ Render remains a fallback for a short-lived demo. It is not the primary choice b
 
 | Resource | State | Deployment impact |
 |---|---|---|
-| Neon PostgreSQL | Connected; 17 tables; Alembic `1b6ee2a9f851` at head | Ready. Core application tables are empty. |
+| Neon PostgreSQL | Connected; Alembic `6e0c0f4a1d2b` at head | Ready, including milestone-linked evidence attachments. |
 | Database URL | Pooled Neon endpoint with SSL | Use for Cloud Run runtime. Obtain a direct Neon URL for migrations. |
 | Vertex credentials | Root ADC file present, type `authorized_user`, mode `0600` | Local development only. Never upload or deploy this file. |
 | Gemini API key | Configured locally | Keep as local/fallback secret; do not put it in Vercel. |
@@ -27,20 +27,17 @@ Render remains a fallback for a short-lived demo. It is not the primary choice b
 | Docker | Engine `29.8.0`; Compose `5.5.1` | Ready for local image verification. |
 | Backend runtime | Python `3.12.14`, uv lockfile | Ready after adding a production Dockerfile. |
 | Frontend runtime | Node `22.20.0`, npm lockfile | Ready; pin Vercel to Node 22. |
-| Source control | No usable Git repository, commit history, or remote | Direct CLI deployment works; initialize a repository before enabling CI/CD. |
+| Source control | Git repository on `origin/main` | CI runs backend migrations/tests and frontend typecheck/build on pushes and pull requests. |
 | Local capacity | About 17 GB disk and 4 GB available memory | Enough for one local container build; avoid retaining unused images. |
-| Deployment manifests | None | Add only a backend Dockerfile and `.dockerignore` for the first release. |
+| Deployment manifests | Backend Dockerfile, Compose, Vercel project configuration | Ready for the documented Cloud Run and Vercel release path. |
 
-## Required code/configuration work
+## Remaining production hardening
 
-Complete these before deploying:
-
-1. Add a backend Dockerfile that installs the locked production dependencies and starts Uvicorn on `0.0.0.0:${PORT:-8080}`.
-2. Add a backend `.dockerignore` excluding `.env`, `.venv`, `.data`, tests, caches, and credential files.
-3. Extend the AI client to use ambient Google Application Default Credentials when the root credential file is absent. Cloud Run then uses its attached service account. Keep the API-key fallback.
-4. Add one focused test proving ambient ADC selection. Run the existing backend suite afterward.
-5. Pin the frontend deployment runtime to Node 22.
-6. Configure trusted proxy address handling for authentication throttling. The current peer-IP bucket can group users behind the Vercel proxy and cause false `429` responses.
+The Dockerfile, dependency lockfiles, ambient ADC fallback, ADC test, Node 22
+pin, and CI release checks are present. Before wider onboarding, configure
+trusted proxy address handling for authentication throttling; the current
+peer-IP bucket can group users behind the Vercel proxy and cause false `429`
+responses.
 
 No CORS middleware is required: browser traffic stays on the Vercel origin and uses the existing `/api/v1` rewrite. `APP_ORIGIN` must exactly equal the final Vercel production origin so mutations and secure cookies work.
 

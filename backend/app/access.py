@@ -86,7 +86,9 @@ def present_challenge(db, challenge, private=False, user=None):
         "id", "public_title_en", "public_title_hi", "summary_en", "summary_hi", "district", "domain", "status", "created_at"
     )}
     data.update(project_id=project.id if project else None, university_name=org.name if org else None,
-                beneficiaries=outcome.beneficiaries if outcome else 0, patents=outcome.patents if outcome else 0, startups=outcome.startups if outcome else 0)
+                beneficiaries=outcome.beneficiaries if outcome else 0, patents=outcome.patents if outcome else 0, startups=outcome.startups if outcome else 0,
+                outcome_metric=outcome.metric if outcome else None, outcome_unit=outcome.unit if outcome else None,
+                outcome_baseline=outcome.baseline if outcome else None, outcome_result=outcome.result if outcome else None)
     if not private:
         return PublicChallenge(**data)
     data.update({field: getattr(challenge, field) for field in PrivateChallenge.model_fields if hasattr(challenge, field)})

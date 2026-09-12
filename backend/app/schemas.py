@@ -159,6 +159,7 @@ class AISuggestionMatch(Input):
     id: str
     reason_en: str = Field(max_length=1000)
     reason_hi: str = Field(max_length=1000)
+    matched_capabilities: list[str] = Field(default_factory=list, max_length=5)
 
 
 class AIResult(Input):
@@ -263,6 +264,10 @@ class PublicChallenge(BaseModel):
     beneficiaries: int
     patents: int
     startups: int
+    outcome_metric: str | None = None
+    outcome_unit: str | None = None
+    outcome_baseline: float | None = None
+    outcome_result: float | None = None
 
 
 class PrivateChallenge(PublicChallenge):

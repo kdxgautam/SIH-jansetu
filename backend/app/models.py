@@ -178,6 +178,7 @@ class Attachment(Base):
     __tablename__ = "attachments"
     id = pk()
     challenge_id = fk("challenges", nullable=False, index=True)
+    milestone_id = fk("milestones", index=True)
     uploader_id = fk("users", nullable=False)
     filename = Column(String(200), nullable=False)
     storage_name = Column(String(64), nullable=False, unique=True)

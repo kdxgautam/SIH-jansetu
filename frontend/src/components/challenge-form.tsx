@@ -7,10 +7,10 @@ import type { Challenge, CitizenGuidance } from "@/lib/types";
 import { usePortal } from "./providers";
 import { ActionButton, ErrorBox, Field, Loading, MutationForm, Select, Textarea, formObject } from "./ui";
 
-export async function uploadFiles(id: string, files: File[]) {
+export async function uploadFiles(id: string, files: File[], milestoneId?: string) {
   const failed: string[] = [];
   for (const file of files) {
-    const data = new FormData(); data.append("file", file);
+    const data = new FormData(); data.append("file", file); if (milestoneId) data.append("milestone_id", milestoneId);
     try { await api(`/challenges/${id}/attachments`, { method: "POST", body: data }); }
     catch { failed.push(file.name); }
   }

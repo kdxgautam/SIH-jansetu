@@ -129,6 +129,9 @@ class WorkflowTest(unittest.TestCase):
         self.request(self.public, "GET", f"/public/challenges/{cid}", status=404)
         self.request(self.citizen, "POST", f"/challenges/{cid}/review", REVIEW, 403)
         project = self.allocate(cid)
+        self.assertEqual(len(self.request(self.gov, "GET", "/challenges?status=assigned")), 1)
+        self.assertEqual(len(self.request(self.gov, "GET", "/challenges?status=submitted")), 0)
+        self.request(self.gov, "GET", "/challenges?status=unknown", status=422)
         plan = {"language": "en", "approach": "Co-design and test a practical water treatment prototype with community participants.", "duration_weeks": 12, "milestones": [{"title": "Prototype field test", "week": 8}]}
         with patch("app.routes.ai.generate", return_value=plan):
             self.assertEqual(self.request(self.uni, "POST", f"/projects/{project}/ai-plan?language=en", {})["duration_weeks"], 12)
@@ -155,6 +158,7 @@ class WorkflowTest(unittest.TestCase):
         for kind in ("student", "faculty"):
             self.request(self.uni, "POST", f"/projects/{project}/team", {"name": "Test " + kind, "discipline": "Environmental engineering", "kind": kind}, 201)
         self.request(self.uni, "PUT", f"/projects/{project}/proposal", proposal)
+        self.assertEqual(len(self.request(self.gov, "GET", "/challenges?queue=proposal")), 1)
         self.request(self.gov, "POST", f"/projects/{project}/proposal/review", {"decision": "request_changes", "note": "Please clarify the testing approach."})
         self.request(self.uni, "PUT", f"/projects/{project}/proposal", proposal)
         self.request(self.gov, "POST", f"/projects/{project}/proposal/review", {"decision": "approve", "note": "Testing approach accepted."})
@@ -162,13 +166,28 @@ class WorkflowTest(unittest.TestCase):
         self.request(self.uni, "PUT", f"/projects/{project}/outcome", outcome, 409)
         milestone = self.request(self.uni, "POST", f"/projects/{project}/milestones", {"title": "Pilot filter installation", "due_date": "2026-12-01"}, 201)
         mid = milestone["id"]
+        for i in range(5):
+            # an empty milestone field means "not linked to a milestone"
+            data = {"milestone_id": ""} if i == 0 else None
+            self.assertEqual(self.citizen.post(f"/api/v1/challenges/{cid}/attachments", files={"file": (f"challenge-{i}.pdf", b"%PDF-1.7 demo", "application/pdf")}, data=data).status_code, 201)
+        self.assertIsNone(self.request(self.gov, "GET", f"/challenges/{cid}/attachments")[0]["milestone_id"])
         self.request(self.industry, "POST", f"/milestones/{mid}/submit", {"evidence": "A partner cannot submit university milestone evidence."}, 403)
         self.request(self.uni, "POST", f"/milestones/{mid}/submit", {"evidence": "Prototype tested with field observations and household interviews."})
+        self.assertEqual(len(self.request(self.gov, "GET", "/challenges?queue=milestone")), 1)
+        blocked_link = self.industry.post(f"/api/v1/challenges/{cid}/attachments", files={"file": ("blocked.pdf", b"%PDF-1.7 demo", "application/pdf")}, data={"milestone_id": mid})
+        self.assertEqual(blocked_link.status_code, 403, blocked_link.text)
         self.request(self.gov, "POST", f"/milestones/{mid}/review", {"decision": "request_changes", "note": "Add more field observations."})
+        for i in range(5):
+            linked = self.uni.post(f"/api/v1/challenges/{cid}/attachments", files={"file": (f"milestone-evidence-{i}.pdf", b"%PDF-1.7 demo", "application/pdf")}, data={"milestone_id": mid})
+            self.assertEqual(linked.status_code, 201, linked.text)
+        linked = self.uni.post(f"/api/v1/challenges/{cid}/attachments", files={"file": ("milestone-evidence-sixth.pdf", b"%PDF-1.7 demo", "application/pdf")}, data={"milestone_id": mid})
+        self.assertEqual(linked.status_code, 409, linked.text)
+        self.assertEqual(self.request(self.gov, "GET", f"/challenges/{cid}/attachments")[-1]["milestone_id"], mid)
         self.request(self.uni, "POST", f"/milestones/{mid}/submit", {"evidence": "More field observations and household interview data are recorded."})
         self.request(self.gov, "POST", f"/milestones/{mid}/review", {"decision": "approve", "note": "Evidence reviewed and accepted."})
         self.request(self.gov, "POST", f"/milestones/{mid}/review", {"decision": "approve", "note": "Repeated approval must fail."}, 409)
         self.request(self.uni, "PUT", f"/projects/{project}/outcome", outcome)
+        self.assertEqual(len(self.request(self.gov, "GET", "/challenges?queue=outcome")), 1)
         with patch("app.routes.ai.generate", side_effect=RuntimeError("provider unavailable")):
             self.assertEqual(self.request(self.gov, "POST", f"/projects/{project}/outcome/analyze", {})["status"], "unavailable")
         self.assertEqual(self.request(self.gov, "GET", f"/projects/{project}")["outcome"]["status"], "submitted")
@@ -186,6 +205,7 @@ class WorkflowTest(unittest.TestCase):
         final = self.request(self.public, "GET", f"/public/challenges/{cid}")
         self.assertEqual(final["status"], "resolved")
         self.assertEqual(final["beneficiaries"], 100)
+        self.assertEqual((final["outcome_metric"], final["outcome_baseline"], final["outcome_result"]), ("Water access", 10, 100))
         stats = self.request(self.gov, "GET", "/analytics")
         self.assertEqual((stats["resolved"], stats["funding_committed"], stats["completion_rate"]), (1, 50000, 100))
         self.assertEqual(self.request(self.citizen, "GET", "/challenges/summary")["resolved"], 1)
@@ -275,6 +295,33 @@ class WorkflowTest(unittest.TestCase):
             self.request(self.citizen, "POST", "/ai/chat", request, 429)
         self.assertNotIn("stale-user", routes.CHAT_ATTEMPTS)  # An idle user is evicted, not kept forever.
         self.assertEqual(len(routes.CHAT_ATTEMPTS), 1)
+
+    def test_advisor_chat_curated_multistep_flows(self):
+        first = self.request(self.public, "POST", "/ai/chat", {
+            "message": "How do I submit a challenge?", "language": "en", "page": "home", "history": []
+        })
+        self.assertIn("optional", first["answer"])
+        self.assertEqual(first["suggestions"][0], "What details should I include?")
+
+        details = self.request(self.public, "POST", "/ai/chat", {
+            "message": "What details should I include?", "language": "en", "page": "home",
+            "history": [{"role": "user", "content": "How do I submit a challenge?"}, {"role": "assistant", "content": first["answer"]}],
+        })
+        self.assertIn("who experiences it", details["answer"])
+        self.assertIn("What happens after submission?", details["suggestions"])
+
+        continuation = self.request(self.public, "POST", "/ai/chat", {
+            "message": "What happens next?", "language": "hi", "page": "home",
+            "history": [{"role": "user", "content": "मैं चुनौती कैसे दर्ज करूँ?"}, {"role": "assistant", "content": "ठीक है"}],
+        })
+        self.assertIn("रिपोर्ट पहले सहेजी", continuation["answer"])
+        self.assertEqual(continuation["language"], "hi")
+
+        outcome = self.request(self.public, "POST", "/ai/chat", {
+            "message": "When can an outcome be approved?", "language": "en", "page": "home", "history": []
+        })
+        self.assertIn("milestones are approved", outcome["answer"])
+        self.assertNotIn("Check that the report is understandable", outcome["answer"])
 
     def test_ai_failures_and_review_branches(self):
         cid = self.create()
